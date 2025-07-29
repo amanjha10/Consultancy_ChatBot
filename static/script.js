@@ -104,27 +104,34 @@ class ChatBot {
             
             // Hide typing indicator
             this.hideTyping();
-
+            
+            // Check if we should clear the chat
+            if (data.clear_chat) {
+                this.clearChat();
+            }
+            
             // Add bot response
-            this.addMessage(data.response, 'bot');
-
-            // Handle suggestions
+            this.addMessage(data.response, 'bot', data.type);
+            
+            // Update context if provided
+            if (data.context) {
+                this.context = { ...this.context, ...data.context };
+            }
+            
+            // Add suggestions if any
             if (data.suggestions && data.suggestions.length > 0) {
-                this.addSuggestions(data.suggestions);
+                this.addSuggestions(data.suggestions, data.type);
             }
-
-            // Handle special response types
-            this.handleSpecialResponse(data);
-
-            // Update context
-            if (data.data) {
-                this.context = { ...this.context, ...data.data };
+            
+            // Show advisor modal if type is human_handoff
+            if (data.type === 'human_handoff' && data.advisor) {
+                this.showAdvisorModal(data.advisor);
             }
-
+            
         } catch (error) {
             console.error('Error:', error);
             this.hideTyping();
-            this.addMessage('Sorry, I encountered an error. Please try again or contact our support team.', 'bot');
+            this.addMessage('Sorry, something went wrong. Please try again.', 'bot', 'error');
         }
 
         this.scrollToBottom();
@@ -273,32 +280,23 @@ class ChatBot {
     }
 
     clearChat() {
-        // Keep only the initial greeting and suggestions
-        const messages = this.messagesContainer.querySelectorAll('.message, .suggestions-container');
-        messages.forEach((message, index) => {
-            if (index > 1) { // Keep first message and initial suggestions
-                message.remove();
-            }
-        });
+        // Clear messages
+        this.messagesContainer.innerHTML = '';
         
         // Reset context
         this.context = {};
         
-        // Add a fresh start message
-        setTimeout(() => {
-            this.addMessage('Chat cleared! How can I help you with your study abroad plans?', 'bot');
-            
-            const freshSuggestions = [
-                'Choose country',
-                '🇺🇸 United States',
-                '🇨🇦 Canada',
-                '🇬🇧 United Kingdom',
-                '🇦🇺 Australia',
-                'Browse by field'
-            ];
-            this.addSuggestions(freshSuggestions);
-            this.scrollToBottom();
-        }, 500);
+        // Add welcome message
+        this.addMessage('👋 Hello! I\'m your study abroad assistant. How can I help you today?', 'bot', 'greeting');
+        
+        // Add initial suggestions
+        this.addSuggestions([
+            '🌍 Choose Country',
+            '🎓 Browse Programs',
+            '📚 Requirements',
+            '💰 Scholarships',
+            '🗣️ Talk to Advisor'
+        ], 'main_menu');
     }
 
     scrollToBottom() {

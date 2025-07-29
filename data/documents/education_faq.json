@@ -16,6 +16,14 @@
                 "page": 3,
                 "document": "Study Abroad Guide 2025",
                 "chunk_id": "gen_002"
+            },
+            {
+                "question": "what is headphone",
+                "answer": "A headphone is a device you wear over or in your ears to listen to audio privately, without disturbing others.",
+                "section": "Custom FAQ",
+                "page": 0,
+                "document": "Admin Added FAQ",
+                "chunk_id": "6a4fc34b-9f2d-42c2-bfaf-cacf5932f280"
             }
         ],
         "visa_information": [
@@ -26,6 +34,14 @@
                 "page": 5,
                 "document": "International Student Handbook",
                 "chunk_id": "visa_001"
+            },
+            {
+                "question": "how to get nepali citizenship",
+                "answer": "You can go to cdo office and get it",
+                "section": "Custom FAQ",
+                "page": 0,
+                "document": "Admin Added FAQ",
+                "chunk_id": "e9c0351a-9bb5-4a70-8da7-92da2626eab5"
             }
         ],
         "accommodation": [
@@ -46,7 +62,23 @@
                 "page": 0,
                 "document": "Admin Added FAQ",
                 "chunk_id": "a5ec28fa-9e4d-42f2-9d76-9b71b46f73bc"
-            } 
+            },
+            {
+                "question": "What are phones",
+                "answer": "phone is a device",
+                "section": "Custom FAQ",
+                "page": 0,
+                "document": "Admin Added FAQ",
+                "chunk_id": "3daf1325-75f8-465f-bdab-b3edbd0be780"
+            },
+            {
+                "question": "what is mouse ",
+                "answer": "mouse is a device",
+                "section": "Custom FAQ",
+                "page": 0,
+                "document": "Admin Added FAQ",
+                "chunk_id": "0b29242d-a3b2-485e-a79d-67c4adab4b4b"
+            }
         ]
     },
     "language_requirements": {
