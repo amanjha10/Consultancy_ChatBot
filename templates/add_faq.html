@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add FAQ - EduConsult Admin</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .faq-form { max-width: 600px; margin: 40px auto; background: #fff; padding: 30px; border-radius: 16px; box-shadow: 0 4px 24px rgba(0,0,0,0.08); }
+        .faq-form h2 { margin-bottom: 18px; }
+        .faq-form label { display: block; margin-bottom: 6px; font-weight: 500; }
+        .faq-form input, .faq-form textarea, .faq-form select { width: 100%; padding: 10px; margin-bottom: 18px; border-radius: 8px; border: 1px solid #ccc; }
+        .faq-form button { background: #667eea; color: #fff; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-size: 1rem; }
+        .faq-form button:hover { background: #764ba2; }
+        .success-msg { color: #28a745; margin-bottom: 12px; }
+        .error-msg { color: #dc3545; margin-bottom: 12px; }
+    </style>
+</head>
+<body>
+    <div class="faq-form">
+        <h2>Add New FAQ Pair</h2>
+        {% if success %}<div class="success-msg">{{ success }}</div>{% endif %}
+        {% if error %}<div class="error-msg">{{ error }}</div>{% endif %}
+        <form method="POST" action="/admin/add-faq">
+            <label for="category">Select Category:</label>
+            <select name="category" id="category" required>
+                <option value="general_queries.study_abroad_basics">General Queries - Study Abroad Basics</option>
+                <option value="general_queries.visa_information">General Queries - Visa Information</option>
+                <option value="general_queries.accommodation">General Queries - Accommodation</option>
+                <option value="general_queries.custom_entries">General Queries - Custom Entries</option>
+                <option value="language_requirements.english_speaking_countries">Language Requirements - English Speaking Countries</option>
+                <option value="language_requirements.non_english_countries">Language Requirements - Non-English Countries</option>
+                <option value="scholarships.global_opportunities">Scholarships - Global Opportunities</option>
+                <option value="scholarships.country_specific">Scholarships - Country Specific</option>
+                <option value="career_prospects.post_study_work">Career Prospects - Post Study Work</option>
+                <option value="career_prospects.job_markets">Career Prospects - Job Markets</option>
+            </select>
+            <label for="question">Question</label>
+            <input type="text" id="question" name="question" required placeholder="Type the student question...">
+            <label for="answer">Answer</label>
+            <textarea id="answer" name="answer" rows="5" required placeholder="Type the answer..."></textarea>
+            <button type="submit">Add FAQ</button>
+        </form>
+    </div>
+</body>
+</html>

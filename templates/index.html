@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduConsult - Study Abroad Chatbot</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <i class="fas fa-graduation-cap"></i>
+                <h1>EduConsult</h1>
+            </div>
+            <div class="tagline">Your Gateway to Global Education</div>
+        </header>
+
+        <!-- Chat Container -->
+        <div class="chat-container">
+            <div class="chat-header">
+                <div class="bot-info">
+                    <div class="bot-avatar">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <div class="bot-details">
+                        <h3>AI Study Advisor</h3>
+                        <span class="status">
+                            <span class="status-dot"></span>
+                            Online
+                        </span>
+                    </div>
+                </div>
+                <div class="chat-actions">
+                    <button id="clearChat" class="btn-icon" title="Clear Chat">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Messages Area -->
+            <div class="messages-container" id="messagesContainer">
+                <div class="message bot-message">
+                    <div class="message-avatar">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <div class="message-content">
+                        <div class="message-text">
+                            Good morning! Welcome to EduConsult! 🌟<br><br>
+                            I'm here to help you find the perfect study abroad program. Whether you're looking for specific countries, courses, or just exploring your options, I've got you covered!<br><br>
+                            How can I assist you today?
+                        </div>
+                        <div class="message-time">Just now</div>
+                    </div>
+                </div>
+                
+                <!-- Initial Suggestions -->
+                <div class="suggestions-container" id="initialSuggestions">
+                    <div class="suggestions-title">Quick Options:</div>
+                    <div class="suggestions">
+                        <button class="suggestion-btn" data-text="Choose country">🌍 Choose Country</button>
+                        <button class="suggestion-btn" data-text="United States">🇺🇸 United States</button>
+                        <button class="suggestion-btn" data-text="Canada">🇨🇦 Canada</button>
+                        <button class="suggestion-btn" data-text="United Kingdom">🇬🇧 United Kingdom</button>
+                        <button class="suggestion-btn" data-text="Australia">🇦🇺 Australia</button>
+                        <button class="suggestion-btn" data-text="Germany">🇩🇪 Germany</button>
+                        <button class="suggestion-btn" data-text="Explore courses by field">🎓 Browse by Field</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Input Area -->
+            <div class="input-container">
+                <div class="typing-indicator" id="typingIndicator" style="display: none;">
+                    <div class="typing-dots">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                    <span>AI is typing...</span>
+                </div>
+                
+                <div class="input-area">
+                    <input 
+                        type="text" 
+                        id="messageInput" 
+                        placeholder="Type your message or use suggestions above..."
+                        autocomplete="off"
+                    >
+                    <button id="sendButton" class="send-btn">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="quick-actions">
+                    <button class="quick-action-btn" data-text="Talk to advisor">
+                        <i class="fas fa-user-tie"></i>
+                        Talk to Advisor
+                    </button>
+                    <button class="quick-action-btn" data-text="Popular courses">
+                        <i class="fas fa-star"></i>
+                        Popular Courses
+                    </button>
+                    <button class="quick-action-btn" data-text="Scholarships">
+                        <i class="fas fa-graduation-cap"></i>
+                        Scholarships
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Advisor Modal -->
+        <div id="advisorModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Connect with Our Expert</h3>
+                    <span class="close">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <div class="advisor-card">
+                        <div class="advisor-avatar">
+                            <i class="fas fa-user-tie"></i>
+                        </div>
+                        <div class="advisor-info">
+                            <h4 id="advisorName">Anjali Sharma</h4>
+                            <p id="advisorSpecialization">USA & Canada Specialist</p>
+                            <p id="advisorPhone">📞 +91-9876543210</p>
+                        </div>
+                    </div>
+                    <div class="advisor-actions">
+                        <button class="btn-primary" id="scheduleCallback">
+                            <i class="fas fa-calendar"></i>
+                            Schedule Callback
+                        </button>
+                        <button class="btn-secondary" id="continueChat">
+                            <i class="fas fa-robot"></i>
+                            Continue with Bot
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
