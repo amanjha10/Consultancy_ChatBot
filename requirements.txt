@@ -1,0 +1,10 @@
+Flask==2.3.3
+python-dotenv==1.0.0
+google-generativeai==0.8.5
+requests==2.31.0
+Werkzeug==2.3.7
+sentence-transformers==2.5.1
+chromadb==0.4.22
+faiss-cpu==1.7.4
+numpy<2.0
+torch>=2.0.0
