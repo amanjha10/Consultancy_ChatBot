@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent Dashboard - EduConsult</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f6fa;
+            color: #333;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+        }
+
+        .agent-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #4CAF50;
+        }
+
+        .logout-btn {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .logout-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .dashboard-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            padding: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .section {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .section-header {
+            background: #f8f9fa;
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .section-header h2 {
+            font-size: 1.2rem;
+            color: #333;
+        }
+
+        .badge {
+            background: #667eea;
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .session-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .session-item {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid #f0f0f0;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+
+        .session-item:hover {
+            background: #f8f9fa;
+        }
+
+        .session-item:last-child {
+            border-bottom: none;
+        }
+
+        .session-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .session-id {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .session-time {
+            font-size: 0.8rem;
+            color: #666;
+        }
+
+        .session-reason {
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 0.5rem;
+        }
+
+        .session-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .btn {
+            padding: 0.4rem 0.8rem;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5a6fd8;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .empty-state {
+            padding: 2rem;
+            text-align: center;
+            color: #666;
+        }
+
+        .empty-state i {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            opacity: 0.3;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .refresh-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .refresh-btn:hover {
+            background: #218838;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-container {
+                grid-template-columns: 1fr;
+                padding: 1rem;
+            }
+            
+            .header {
+                padding: 1rem;
+                flex-direction: column;
+                gap: 1rem;
+            }
+        }
+
+        /* Notification styles */
+        .notification {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            margin-bottom: 10px;
+            padding: 15px;
+            border-left: 4px solid #3498db;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        .notification-info {
+            border-left-color: #3498db;
+        }
+
+        .notification-success {
+            border-left-color: #27ae60;
+        }
+
+        .notification-warning {
+            border-left-color: #f39c12;
+        }
+
+        .notification-error {
+            border-left-color: #e74c3c;
+        }
+
+        .notification-content {
+            flex: 1;
+        }
+
+        .notification-content strong {
+            display: block;
+            margin-bottom: 5px;
+            color: #2c3e50;
+        }
+
+        .notification-content p {
+            margin: 0;
+            color: #7f8c8d;
+            font-size: 0.9rem;
+        }
+
+        .notification-close {
+            background: none;
+            border: none;
+            font-size: 18px;
+            color: #bdc3c7;
+            cursor: pointer;
+            padding: 0;
+            margin-left: 10px;
+        }
+
+        .notification-close:hover {
+            color: #7f8c8d;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1><i class="fas fa-tachometer-alt"></i> Agent Dashboard</h1>
+        <div class="agent-info">
+            <div class="status-indicator"></div>
+            <span>{{ agent.name }} ({{ agent.specialization }})</span>
+            <a href="/agent/logout" class="logout-btn">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </a>
+        </div>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-value" id="pending-count">{{ pending_sessions|length }}</div>
+            <div class="stat-label">Pending Sessions</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" id="assigned-count">{{ assigned_sessions|length }}</div>
+            <div class="stat-label">My Sessions</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ agent.total_sessions_handled }}</div>
+            <div class="stat-label">Total Handled</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ agent.status|title }}</div>
+            <div class="stat-label">Current Status</div>
+        </div>
+    </div>
+
+    <div class="dashboard-container">
+        <!-- Pending Sessions -->
+        <div class="section">
+            <div class="section-header">
+                <h2><i class="fas fa-clock"></i> Pending Sessions</h2>
+                <div>
+                    <span class="badge" id="pending-badge">{{ pending_sessions|length }}</span>
+                    <button class="refresh-btn" onclick="refreshPendingSessions()">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                </div>
+            </div>
+            <div class="session-list" id="pending-sessions">
+                {% if pending_sessions %}
+                    {% for session in pending_sessions %}
+                    <div class="session-item" data-session-id="{{ session.session_id }}">
+                        <div class="session-header">
+                            <span class="session-id">{{ session.session_id[:8] }}...</span>
+                            <span class="session-time">{{ session.escalated_at.strftime('%H:%M') if session.escalated_at else 'N/A' }}</span>
+                        </div>
+                        <div class="session-reason">{{ session.escalation_reason or 'Bot unable to help' }}</div>
+                        <div class="session-actions">
+                            <button class="btn btn-primary" onclick="assignSession('{{ session.session_id }}')">
+                                <i class="fas fa-user-plus"></i> Take Session
+                            </button>
+                            <a href="/agent/session/{{ session.session_id }}" class="btn btn-secondary">
+                                <i class="fas fa-eye"></i> View
+                            </a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="empty-state">
+                        <i class="fas fa-inbox"></i>
+                        <p>No pending sessions</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- My Sessions -->
+        <div class="section">
+            <div class="section-header">
+                <h2><i class="fas fa-comments"></i> My Active Sessions</h2>
+                <div>
+                    <span class="badge" id="assigned-badge">{{ assigned_sessions|length }}</span>
+                    <button class="refresh-btn" onclick="refreshMySessions()">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                </div>
+            </div>
+            <div class="session-list" id="my-sessions">
+                {% if assigned_sessions %}
+                    {% for session in assigned_sessions %}
+                    <div class="session-item" data-session-id="{{ session.session_id }}">
+                        <div class="session-header">
+                            <span class="session-id">{{ session.session_id[:8] }}...</span>
+                            <span class="session-time">{{ session.updated_at.strftime('%H:%M') if session.updated_at else 'N/A' }}</span>
+                        </div>
+                        <div class="session-reason">{{ session.escalation_reason or 'Assigned to you' }}</div>
+                        <div class="session-actions">
+                            <a href="/agent/session/{{ session.session_id }}" class="btn btn-primary">
+                                <i class="fas fa-comments"></i> Chat
+                            </a>
+                            <button class="btn btn-success" onclick="completeSession('{{ session.session_id }}')">
+                                <i class="fas fa-check"></i> Complete
+                            </button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="empty-state">
+                        <i class="fas fa-user-check"></i>
+                        <p>No active sessions</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Socket.IO connection
+        const socket = io();
+
+        // Agent information
+        const agentId = '{{ agent.agent_id }}';
+        const agentName = '{{ agent.name }}';
+
+        // Socket event handlers
+        socket.on('connect', function() {
+            console.log('Connected to server');
+            // Join agents room for notifications
+            socket.emit('join_agents_room');
+        });
+
+        socket.on('joined_agents_room', function(data) {
+            console.log('Joined agents notification room');
+        });
+
+        socket.on('new_escalation', function(data) {
+            console.log('New escalation:', data);
+            showNotification('New Session Escalated',
+                `Session ${data.session_id.substring(0, 8)}... needs assistance. Priority: ${data.priority}`,
+                'info');
+            refreshPendingSessions();
+            updatePendingCount();
+        });
+
+        socket.on('session_assigned', function(data) {
+            console.log('Session assigned:', data);
+            if (data.agent_id !== agentId) {
+                showNotification('Session Assigned',
+                    `Session ${data.session_id.substring(0, 8)}... was assigned to ${data.agent_name}`,
+                    'success');
+            }
+            refreshPendingSessions();
+            refreshMySessions();
+            updatePendingCount();
+        });
+
+        socket.on('new_escalated_session', function(data) {
+            console.log('New escalated session:', data);
+            refreshPendingSessions();
+        });
+
+        // Functions
+        function assignSession(sessionId) {
+            if (confirm('Are you sure you want to take this session?')) {
+                fetch(`/agent/api/session/${sessionId}/assign`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Session assigned successfully!');
+                        refreshPendingSessions();
+                        refreshMySessions();
+                    } else {
+                        alert('Failed to assign session: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error assigning session');
+                });
+            }
+        }
+
+        function completeSession(sessionId) {
+            if (confirm('Are you sure you want to mark this session as completed?')) {
+                fetch(`/agent/api/session/${sessionId}/complete`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Session completed successfully!');
+                        refreshMySessions();
+                    } else {
+                        alert('Failed to complete session: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error completing session');
+                });
+            }
+        }
+
+        function refreshPendingSessions() {
+            fetch('/agent/api/pending-sessions')
+                .then(response => {
+                    if (response.status === 401) {
+                        // Session expired, redirect to login
+                        window.location.href = '/agent/login';
+                        return;
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data) {
+                        updateSessionList('pending-sessions', data.sessions, 'pending');
+                        document.getElementById('pending-count').textContent = data.sessions.length;
+                        document.getElementById('pending-badge').textContent = data.sessions.length;
+                    }
+                })
+                .catch(error => console.error('Error refreshing pending sessions:', error));
+        }
+
+        function refreshMySessions() {
+            fetch('/agent/api/my-sessions')
+                .then(response => {
+                    if (response.status === 401) {
+                        // Session expired, redirect to login
+                        window.location.href = '/agent/login';
+                        return;
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data) {
+                        updateSessionList('my-sessions', data.sessions, 'assigned');
+                        document.getElementById('assigned-count').textContent = data.sessions.length;
+                        document.getElementById('assigned-badge').textContent = data.sessions.length;
+                    }
+                })
+                .catch(error => console.error('Error refreshing my sessions:', error));
+        }
+
+        function updateSessionList(containerId, sessions, type) {
+            const container = document.getElementById(containerId);
+            
+            if (sessions.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-${type === 'pending' ? 'inbox' : 'user-check'}"></i>
+                        <p>No ${type === 'pending' ? 'pending' : 'active'} sessions</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = sessions.map(session => {
+                const sessionTime = session.escalated_at || session.updated_at;
+                const timeStr = sessionTime ? new Date(sessionTime).toLocaleTimeString('en-US', {hour: '2-digit', minute: '2-digit'}) : 'N/A';
+                
+                return `
+                    <div class="session-item" data-session-id="${session.session_id}">
+                        <div class="session-header">
+                            <span class="session-id">${session.session_id.substring(0, 8)}...</span>
+                            <span class="session-time">${timeStr}</span>
+                        </div>
+                        <div class="session-reason">${session.escalation_reason || (type === 'pending' ? 'Bot unable to help' : 'Assigned to you')}</div>
+                        <div class="session-actions">
+                            ${type === 'pending' ? 
+                                `<button class="btn btn-primary" onclick="assignSession('${session.session_id}')">
+                                    <i class="fas fa-user-plus"></i> Take Session
+                                </button>` :
+                                `<a href="/agent/session/${session.session_id}" class="btn btn-primary">
+                                    <i class="fas fa-comments"></i> Chat
+                                </a>
+                                <button class="btn btn-success" onclick="completeSession('${session.session_id}')">
+                                    <i class="fas fa-check"></i> Complete
+                                </button>`
+                            }
+                            <a href="/agent/session/${session.session_id}" class="btn btn-secondary">
+                                <i class="fas fa-eye"></i> View
+                            </a>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Auto-refresh every 30 seconds
+        setInterval(() => {
+            refreshPendingSessions();
+            refreshMySessions();
+        }, 30000);
+
+        // Notification system
+        function showNotification(title, message, type = 'info') {
+            // Create notification element
+            const notification = document.createElement('div');
+            notification.className = `notification notification-${type}`;
+            notification.innerHTML = `
+                <div class="notification-content">
+                    <strong>${title}</strong>
+                    <p>${message}</p>
+                </div>
+                <button class="notification-close" onclick="this.parentElement.remove()">×</button>
+            `;
+
+            // Add to page
+            let container = document.getElementById('notification-container');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'notification-container';
+                container.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    z-index: 1000;
+                    max-width: 400px;
+                `;
+                document.body.appendChild(container);
+            }
+
+            container.appendChild(notification);
+
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                if (notification.parentElement) {
+                    notification.remove();
+                }
+            }, 5000);
+
+            // Play notification sound (optional)
+            if (type === 'info') {
+                playNotificationSound();
+            }
+        }
+
+        function playNotificationSound() {
+            // Create a simple notification sound
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            oscillator.frequency.value = 800;
+            oscillator.type = 'sine';
+
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.5);
+        }
+
+        function updatePendingCount() {
+            fetch('/agent/api/pending-sessions')
+                .then(response => response.json())
+                .then(data => {
+                    const count = data.sessions ? data.sessions.length : 0;
+                    const countElement = document.getElementById('pending-count');
+                    if (countElement) {
+                        countElement.textContent = count;
+                        // Add visual indicator for new sessions
+                        if (count > 0) {
+                            countElement.style.backgroundColor = '#e74c3c';
+                            countElement.style.animation = 'pulse 1s infinite';
+                        } else {
+                            countElement.style.backgroundColor = '#95a5a6';
+                            countElement.style.animation = 'none';
+                        }
+                    }
+                })
+                .catch(error => console.error('Error updating pending count:', error));
+        }
+
+        // Initial load
+        document.addEventListener('DOMContentLoaded', function() {
+            refreshPendingSessions();
+            refreshMySessions();
+            updatePendingCount();
+
+            // Update counts every 30 seconds
+            setInterval(updatePendingCount, 30000);
+        });
+    </script>
+</body>
+</html>

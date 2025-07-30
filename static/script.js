@@ -7,9 +7,24 @@ class ChatBot {
         this.clearChatBtn = document.getElementById('clearChat');
         this.modal = document.getElementById('advisorModal');
         this.context = {};
-        
+        this.sessionId = null;
+        this.isHumanTakeover = false;
+        this.socket = null;
+
         this.initializeEventListeners();
+        this.initializeSocket();
         this.scrollToBottom();
+
+        // Periodic session room check for escalated sessions
+        setInterval(() => {
+            if (this.isHumanTakeover && this.sessionId && this.socket) {
+                console.log('Ensuring session room connection...');
+                this.socket.emit('join_session', {
+                    session_id: this.sessionId,
+                    user_type: 'user'
+                });
+            }
+        }, 30000); // Check every 30 seconds
     }
 
     initializeEventListeners() {
@@ -70,6 +85,67 @@ class ChatBot {
         this.sendButton.style.opacity = hasText ? '1' : '0.6';
     }
 
+    initializeSocket() {
+        // Initialize Socket.IO connection if available
+        if (typeof io !== 'undefined') {
+            this.socket = io();
+
+            this.socket.on('connect', () => {
+                console.log('Connected to real-time chat');
+                console.log('Socket ID:', this.socket.id);
+                this.showConnectionStatus('Connected to real-time chat', 'success');
+            });
+
+            this.socket.on('disconnect', () => {
+                console.log('Disconnected from real-time chat');
+                this.showConnectionStatus('Disconnected from real-time chat', 'error');
+            });
+
+            this.socket.on('new_message', (data) => {
+                console.log('Received new_message event:', data);
+                console.log('Current sessionId:', this.sessionId);
+
+                if (data.sender_type === 'agent' && data.session_id === this.sessionId) {
+                    console.log('Adding agent message to chat');
+                    this.addMessage(data.message_content, 'agent', 'agent_message', {
+                        sender_name: data.sender_name || 'Agent',
+                        timestamp: data.timestamp
+                    });
+                } else {
+                    console.log('Message not for this session or not from agent');
+                }
+            });
+
+            this.socket.on('human_takeover', (data) => {
+                if (data.session_id === this.sessionId) {
+                    this.handleHumanTakeover(data);
+                }
+            });
+
+            this.socket.on('session_escalated_notification', (data) => {
+                if (data.session_id === this.sessionId) {
+                    this.showEscalationNotification(data.message);
+                }
+            });
+
+            this.socket.on('agent_assigned_notification', (data) => {
+                if (data.session_id === this.sessionId) {
+                    this.showAgentAssignedNotification(data);
+                }
+            });
+
+            this.socket.on('session_completed_notification', (data) => {
+                if (data.session_id === this.sessionId) {
+                    this.showSessionCompletedNotification(data.message);
+                }
+            });
+
+            this.socket.on('agent_typing_status', (data) => {
+                this.handleAgentTyping(data.is_typing);
+            });
+        }
+    }
+
     async sendMessage(text = null) {
         const message = text || this.messageInput.value.trim();
         
@@ -123,9 +199,42 @@ class ChatBot {
                 this.addSuggestions(data.suggestions, data.type);
             }
             
-            // Show advisor modal if type is human_handoff
+            // Handle human handoff scenarios
             if (data.type === 'human_handoff' && data.advisor) {
                 this.showAdvisorModal(data.advisor);
+            } else if (data.type === 'human_handoff_initiated' && data.escalated) {
+                this.handleEscalation(data);
+            } else if (data.type === 'human_handling' && data.escalated) {
+                // Session is being handled by human - don't show bot response
+                // Just ensure we're connected to the session room
+                this.isHumanTakeover = true;
+                if (data.session_info && data.session_info.session_id) {
+                    this.sessionId = data.session_info.session_id;
+                    if (this.socket) {
+                        this.socket.emit('join_session', {
+                            session_id: this.sessionId,
+                            user_type: 'user'
+                        });
+                    }
+                }
+                return; // Don't process further - no bot response to show
+            }
+
+            // Extract session information if provided
+            if (data.session_info && data.session_info.session_id) {
+                this.sessionId = data.session_info.session_id;
+                console.log('Session escalated, joining room:', this.sessionId);
+
+                // Join the session room for real-time updates
+                if (this.socket) {
+                    this.socket.emit('join_session', {
+                        session_id: this.sessionId,
+                        user_type: 'user'
+                    });
+                    console.log('Emitted join_session event');
+                } else {
+                    console.log('Socket not available for joining session');
+                }
             }
             
         } catch (error) {
@@ -137,27 +246,47 @@ class ChatBot {
         this.scrollToBottom();
     }
 
-    addMessage(text, sender) {
+    addMessage(text, sender, type = null, metadata = {}) {
         const messageDiv = document.createElement('div');
         messageDiv.className = `message ${sender}-message`;
 
         const avatar = document.createElement('div');
         avatar.className = 'message-avatar';
-        avatar.innerHTML = sender === 'bot' ? '<i class="fas fa-robot"></i>' : '<i class="fas fa-user"></i>';
+
+        // Set avatar icon based on sender type
+        if (sender === 'bot') {
+            avatar.innerHTML = '<i class="fas fa-robot"></i>';
+        } else if (sender === 'agent') {
+            avatar.innerHTML = '<i class="fas fa-user-tie"></i>';
+            messageDiv.classList.add('agent-message');
+        } else {
+            avatar.innerHTML = '<i class="fas fa-user"></i>';
+        }
 
         const content = document.createElement('div');
         content.className = 'message-content';
 
         const messageText = document.createElement('div');
         messageText.className = 'message-text';
-        
+
         // Handle markdown-like formatting
         const formattedText = this.formatMessage(text);
         messageText.innerHTML = formattedText;
 
         const timestamp = document.createElement('div');
         timestamp.className = 'message-time';
-        timestamp.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+        // Use provided timestamp or current time
+        const timeStr = metadata.timestamp ?
+            new Date(metadata.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) :
+            new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+        // Add sender name for agent messages
+        if (sender === 'agent' && metadata.sender_name) {
+            timestamp.textContent = `${timeStr} - ${metadata.sender_name}`;
+        } else {
+            timestamp.textContent = timeStr;
+        }
 
         content.appendChild(messageText);
         content.appendChild(timestamp);
@@ -303,6 +432,109 @@ class ChatBot {
         setTimeout(() => {
             this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
         }, 100);
+    }
+
+    // New methods for human handoff system
+    handleEscalation(data) {
+        this.isHumanTakeover = true;
+        this.showEscalationNotification('Your conversation has been escalated to a human agent. Please wait while we connect you.');
+
+        // Ensure we're connected to SocketIO and joined the session room
+        if (this.socket && this.sessionId) {
+            console.log('Re-joining session room after escalation:', this.sessionId);
+            this.socket.emit('join_session', {
+                session_id: this.sessionId,
+                user_type: 'user'
+            });
+        }
+    }
+
+    handleHumanTakeover(data) {
+        this.isHumanTakeover = true;
+        this.showHumanTakeoverNotification(data.agent_id);
+    }
+
+    showEscalationNotification(message) {
+        const notificationDiv = document.createElement('div');
+        notificationDiv.className = 'system-notification escalation';
+        notificationDiv.innerHTML = `
+            <div class="notification-content">
+                <i class="fas fa-user-tie"></i>
+                <span>${message}</span>
+            </div>
+        `;
+        this.messagesContainer.appendChild(notificationDiv);
+        this.scrollToBottom();
+    }
+
+    showAgentAssignedNotification(data) {
+        const notificationDiv = document.createElement('div');
+        notificationDiv.className = 'system-notification agent-assigned';
+        notificationDiv.innerHTML = `
+            <div class="notification-content">
+                <i class="fas fa-user-check"></i>
+                <span>Agent ${data.agent_name} has been assigned to help you.</span>
+            </div>
+        `;
+        this.messagesContainer.appendChild(notificationDiv);
+        this.scrollToBottom();
+    }
+
+    showHumanTakeoverNotification(agentId) {
+        const notificationDiv = document.createElement('div');
+        notificationDiv.className = 'system-notification human-takeover';
+        notificationDiv.innerHTML = `
+            <div class="notification-content">
+                <i class="fas fa-handshake"></i>
+                <span>You're now chatting with a human agent.</span>
+            </div>
+        `;
+        this.messagesContainer.appendChild(notificationDiv);
+        this.scrollToBottom();
+    }
+
+    showSessionCompletedNotification(message) {
+        const notificationDiv = document.createElement('div');
+        notificationDiv.className = 'system-notification session-completed';
+        notificationDiv.innerHTML = `
+            <div class="notification-content">
+                <i class="fas fa-check-circle"></i>
+                <span>${message}</span>
+            </div>
+        `;
+        this.messagesContainer.appendChild(notificationDiv);
+        this.scrollToBottom();
+    }
+
+    showConnectionStatus(message, type) {
+        // Create or update connection status indicator
+        let statusDiv = document.getElementById('connection-status');
+        if (!statusDiv) {
+            statusDiv = document.createElement('div');
+            statusDiv.id = 'connection-status';
+            statusDiv.className = 'connection-status';
+            document.querySelector('.chat-container').prepend(statusDiv);
+        }
+
+        statusDiv.className = `connection-status ${type}`;
+        statusDiv.innerHTML = `<i class="fas fa-wifi"></i> ${message}`;
+
+        // Auto-hide success messages
+        if (type === 'success') {
+            setTimeout(() => {
+                statusDiv.style.display = 'none';
+            }, 3000);
+        }
+    }
+
+    handleAgentTyping(isTyping) {
+        if (isTyping) {
+            this.typingIndicator.innerHTML = '<div class="typing-dots"><span></span><span></span><span></span></div> Agent is typing...';
+            this.typingIndicator.style.display = 'flex';
+        } else {
+            this.typingIndicator.style.display = 'none';
+        }
+        this.scrollToBottom();
     }
 }
 

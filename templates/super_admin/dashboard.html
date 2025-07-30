@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Super Admin Dashboard - EduConsult</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f7fa;
+            color: #333;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .super-admin-badge {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 0.3rem 0.8rem;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            margin-left: 1rem;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .admin-info {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .logout-btn {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+
+        .logout-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            padding: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .panel {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+        }
+
+        .panel-header {
+            background: #f8f9fa;
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .panel-header h2 {
+            font-size: 1.2rem;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .panel-content {
+            padding: 1.5rem;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            text-align: center;
+            border-left: 4px solid #667eea;
+        }
+
+        .stat-card h3 {
+            font-size: 2rem;
+            color: #667eea;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-card p {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .session-item {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .session-item:hover {
+            border-color: #667eea;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
+        }
+
+        .session-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .session-id {
+            font-family: monospace;
+            background: #e9ecef;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+        }
+
+        .session-time {
+            color: #666;
+            font-size: 0.8rem;
+        }
+
+        .priority-badge {
+            padding: 0.2rem 0.5rem;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .priority-high {
+            background: #fee;
+            color: #c33;
+        }
+
+        .priority-medium {
+            background: #fef3cd;
+            color: #856404;
+        }
+
+        .priority-low {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .session-reason {
+            color: #666;
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+
+        .assign-section {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .agent-select {
+            flex: 1;
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 0.9rem;
+        }
+
+        .assign-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+
+        .assign-btn:hover {
+            background: #218838;
+        }
+
+        .assign-btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+
+        .agent-card {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .agent-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .agent-name {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .agent-status {
+            padding: 0.2rem 0.5rem;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .status-available {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-busy {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-offline {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .agent-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .agent-stat {
+            text-align: center;
+            font-size: 0.8rem;
+        }
+
+        .agent-stat strong {
+            display: block;
+            color: #667eea;
+            font-size: 1rem;
+        }
+
+        .workload-bar {
+            width: 100%;
+            height: 8px;
+            background: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 0.5rem;
+        }
+
+        .workload-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #28a745, #ffc107, #dc3545);
+            transition: width 0.3s ease;
+        }
+
+        .refresh-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 0.3rem 0.8rem;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+
+        .refresh-btn:hover {
+            background: #5a6fd8;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: #666;
+            padding: 2rem;
+        }
+
+        .empty-state i {
+            font-size: 3rem;
+            color: #ddd;
+            margin-bottom: 1rem;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+                padding: 1rem;
+            }
+            
+            .header {
+                padding: 1rem;
+                flex-direction: column;
+                gap: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div>
+            <h1>
+                <i class="fas fa-crown"></i> Super Admin Dashboard
+                <span class="super-admin-badge">SUPER ADMIN</span>
+            </h1>
+        </div>
+        <div class="header-actions">
+            <div class="admin-info">
+                <i class="fas fa-user-shield"></i>
+                <span>{{ super_admin.name }}</span>
+            </div>
+            <a href="{{ url_for('super_admin.logout') }}" class="logout-btn">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </a>
+        </div>
+    </div>
+
+    <!-- Statistics Overview -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <h3 id="pending-count">{{ pending_sessions|length }}</h3>
+            <p>Pending Assignments</p>
+        </div>
+        <div class="stat-card">
+            <h3 id="active-agents">{{ agent_summary|selectattr('status', 'equalto', 'available')|list|length }}</h3>
+            <p>Available Agents</p>
+        </div>
+        <div class="stat-card">
+            <h3 id="total-agents">{{ agent_summary|length }}</h3>
+            <p>Total Agents</p>
+        </div>
+        <div class="stat-card">
+            <h3 id="assignments-today">{{ recent_assignments|length }}</h3>
+            <p>Assignments Today</p>
+        </div>
+    </div>
+
+    <div class="dashboard">
+        <!-- Pending Sessions Panel -->
+        <div class="panel">
+            <div class="panel-header">
+                <h2>
+                    <i class="fas fa-clock"></i> Pending Sessions
+                </h2>
+                <button class="refresh-btn" onclick="refreshPendingSessions()">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+            </div>
+            <div class="panel-content" id="pending-sessions">
+                {% if pending_sessions %}
+                    {% for session in pending_sessions %}
+                    <div class="session-item" data-session-id="{{ session.session_id }}">
+                        <div class="session-header">
+                            <span class="session-id">{{ session.session_id[:8] }}...</span>
+                            <span class="session-time">{{ session.escalated_at.strftime('%H:%M') if session.escalated_at else 'N/A' }}</span>
+                            <span class="priority-badge priority-medium">Medium</span>
+                        </div>
+                        <div class="session-reason">{{ session.escalation_reason or 'Bot unable to help' }}</div>
+                        <div class="assign-section">
+                            <select class="agent-select" id="agent-select-{{ session.session_id }}">
+                                <option value="">Select Agent...</option>
+                                {% for agent in agent_summary %}
+                                    {% if agent.status == 'available' and agent.current_sessions < agent.max_capacity %}
+                                    <option value="{{ agent.agent_id }}">
+                                        {{ agent.agent_name }} ({{ agent.current_sessions }}/{{ agent.max_capacity }})
+                                    </option>
+                                    {% endif %}
+                                {% endfor %}
+                            </select>
+                            <button class="assign-btn" onclick="assignSession('{{ session.session_id }}')">
+                                <i class="fas fa-user-plus"></i> Assign
+                            </button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="empty-state">
+                        <i class="fas fa-check-circle"></i>
+                        <p>No pending sessions</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Agent Status Panel -->
+        <div class="panel">
+            <div class="panel-header">
+                <h2>
+                    <i class="fas fa-users"></i> Agent Status
+                </h2>
+                <button class="refresh-btn" onclick="refreshAgentStatus()">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+            </div>
+            <div class="panel-content" id="agent-status">
+                {% for agent in agent_summary %}
+                <div class="agent-card">
+                    <div class="agent-header">
+                        <span class="agent-name">{{ agent.agent_name }}</span>
+                        <span class="agent-status status-{{ agent.status }}">{{ agent.status }}</span>
+                    </div>
+                    <div class="agent-stats">
+                        <div class="agent-stat">
+                            <strong>{{ agent.current_sessions }}</strong>
+                            <span>Active</span>
+                        </div>
+                        <div class="agent-stat">
+                            <strong>{{ agent.max_capacity }}</strong>
+                            <span>Capacity</span>
+                        </div>
+                        <div class="agent-stat">
+                            <strong>{{ agent.workload_percentage }}%</strong>
+                            <span>Load</span>
+                        </div>
+                    </div>
+                    <div class="workload-bar">
+                        <div class="workload-fill" style="width: {{ agent.workload_percentage }}%"></div>
+                    </div>
+                    <small style="color: #666; margin-top: 0.5rem; display: block;">
+                        Specialization: {{ agent.specialization }}
+                    </small>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Socket.IO connection
+        const socket = io();
+        
+        // Super admin information
+        const superAdminId = '{{ super_admin.id }}';
+        const superAdminName = '{{ super_admin.name }}';
+
+        // Socket event handlers
+        socket.on('connect', function() {
+            console.log('Super admin connected to server');
+            // Join super admin room for notifications
+            socket.emit('join_super_admin_room');
+        });
+
+        socket.on('new_escalation', function(data) {
+            console.log('New escalation received:', data);
+            showNotification('New Session Escalated', 
+                `Session ${data.session_id.substring(0, 8)}... needs assignment`, 
+                'info');
+            refreshPendingSessions();
+            updateStats();
+        });
+
+        socket.on('session_assigned', function(data) {
+            console.log('Session assigned:', data);
+            if (!data.assigned_by_super_admin) {
+                showNotification('Session Auto-Assigned', 
+                    `Session ${data.session_id.substring(0, 8)}... assigned to ${data.agent_name}`, 
+                    'success');
+            }
+            refreshPendingSessions();
+            refreshAgentStatus();
+            updateStats();
+        });
+
+        // Functions
+        function assignSession(sessionId) {
+            const agentSelect = document.getElementById(`agent-select-${sessionId}`);
+            const agentId = agentSelect.value;
+            
+            if (!agentId) {
+                alert('Please select an agent first');
+                return;
+            }
+            
+            if (confirm(`Assign this session to the selected agent?`)) {
+                fetch('/super-admin/api/assign-session', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        session_id: sessionId,
+                        agent_id: agentId
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        alert('Error: ' + data.error);
+                    } else {
+                        showNotification('Assignment Successful', data.message, 'success');
+                        refreshPendingSessions();
+                        refreshAgentStatus();
+                        updateStats();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Failed to assign session');
+                });
+            }
+        }
+
+        function refreshPendingSessions() {
+            fetch('/super-admin/api/pending-sessions')
+                .then(response => response.json())
+                .then(data => {
+                    const container = document.getElementById('pending-sessions');
+                    
+                    if (data.sessions && data.sessions.length > 0) {
+                        container.innerHTML = data.sessions.map(session => {
+                            const priorityClass = session.priority > 3 ? 'priority-high' : 
+                                                session.priority > 2 ? 'priority-medium' : 'priority-low';
+                            const priorityText = session.priority > 3 ? 'High' : 
+                                               session.priority > 2 ? 'Medium' : 'Low';
+                            
+                            return `
+                                <div class="session-item" data-session-id="${session.session_id}">
+                                    <div class="session-header">
+                                        <span class="session-id">${session.session_id.substring(0, 8)}...</span>
+                                        <span class="session-time">${new Date(session.escalated_at).toLocaleTimeString()}</span>
+                                        <span class="priority-badge ${priorityClass}">${priorityText}</span>
+                                    </div>
+                                    <div class="session-reason">${session.escalation_reason || 'Bot unable to help'}</div>
+                                    <div class="assign-section">
+                                        <select class="agent-select" id="agent-select-${session.session_id}">
+                                            <option value="">Select Agent...</option>
+                                            <!-- Will be populated by refreshAgentStatus -->
+                                        </select>
+                                        <button class="assign-btn" onclick="assignSession('${session.session_id}')">
+                                            <i class="fas fa-user-plus"></i> Assign
+                                        </button>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('');
+                        
+                        // Refresh agent options in selects
+                        refreshAgentOptions();
+                    } else {
+                        container.innerHTML = `
+                            <div class="empty-state">
+                                <i class="fas fa-check-circle"></i>
+                                <p>No pending sessions</p>
+                            </div>
+                        `;
+                    }
+                })
+                .catch(error => console.error('Error refreshing pending sessions:', error));
+        }
+
+        function refreshAgentStatus() {
+            fetch('/super-admin/api/agents')
+                .then(response => response.json())
+                .then(data => {
+                    const container = document.getElementById('agent-status');
+                    
+                    container.innerHTML = data.agents.map(agent => {
+                        const statusClass = `status-${agent.status}`;
+                        
+                        return `
+                            <div class="agent-card">
+                                <div class="agent-header">
+                                    <span class="agent-name">${agent.agent_name}</span>
+                                    <span class="agent-status ${statusClass}">${agent.status}</span>
+                                </div>
+                                <div class="agent-stats">
+                                    <div class="agent-stat">
+                                        <strong>${agent.current_sessions}</strong>
+                                        <span>Active</span>
+                                    </div>
+                                    <div class="agent-stat">
+                                        <strong>${agent.max_capacity}</strong>
+                                        <span>Capacity</span>
+                                    </div>
+                                    <div class="agent-stat">
+                                        <strong>${agent.workload_percentage}%</strong>
+                                        <span>Load</span>
+                                    </div>
+                                </div>
+                                <div class="workload-bar">
+                                    <div class="workload-fill" style="width: ${agent.workload_percentage}%"></div>
+                                </div>
+                                <small style="color: #666; margin-top: 0.5rem; display: block;">
+                                    Specialization: ${agent.specialization}
+                                </small>
+                            </div>
+                        `;
+                    }).join('');
+                    
+                    // Update agent options in assignment selects
+                    refreshAgentOptions(data.agents);
+                })
+                .catch(error => console.error('Error refreshing agent status:', error));
+        }
+
+        function refreshAgentOptions(agents = null) {
+            if (!agents) {
+                // Fetch agents if not provided
+                fetch('/super-admin/api/agents')
+                    .then(response => response.json())
+                    .then(data => refreshAgentOptions(data.agents))
+                    .catch(error => console.error('Error fetching agents:', error));
+                return;
+            }
+            
+            // Update all agent select dropdowns
+            const selects = document.querySelectorAll('.agent-select');
+            selects.forEach(select => {
+                const currentValue = select.value;
+                select.innerHTML = '<option value="">Select Agent...</option>';
+                
+                agents.forEach(agent => {
+                    if (agent.status === 'available' && agent.current_sessions < agent.max_capacity) {
+                        const option = document.createElement('option');
+                        option.value = agent.agent_id;
+                        option.textContent = `${agent.agent_name} (${agent.current_sessions}/${agent.max_capacity})`;
+                        select.appendChild(option);
+                    }
+                });
+                
+                // Restore previous selection if still valid
+                if (currentValue) {
+                    select.value = currentValue;
+                }
+            });
+        }
+
+        function updateStats() {
+            // Update statistics
+            fetch('/super-admin/api/pending-sessions')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('pending-count').textContent = data.sessions ? data.sessions.length : 0;
+                });
+            
+            fetch('/super-admin/api/agents')
+                .then(response => response.json())
+                .then(data => {
+                    const availableAgents = data.agents.filter(agent => agent.status === 'available').length;
+                    document.getElementById('active-agents').textContent = availableAgents;
+                    document.getElementById('total-agents').textContent = data.agents.length;
+                });
+        }
+
+        function showNotification(title, message, type = 'info') {
+            // Create notification element
+            const notification = document.createElement('div');
+            notification.className = `notification notification-${type}`;
+            notification.innerHTML = `
+                <div class="notification-content">
+                    <strong>${title}</strong>
+                    <p>${message}</p>
+                </div>
+                <button class="notification-close" onclick="this.parentElement.remove()">×</button>
+            `;
+            
+            // Add to page
+            let container = document.getElementById('notification-container');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'notification-container';
+                container.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    z-index: 1000;
+                    max-width: 400px;
+                `;
+                document.body.appendChild(container);
+            }
+            
+            container.appendChild(notification);
+            
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                if (notification.parentElement) {
+                    notification.remove();
+                }
+            }, 5000);
+        }
+
+        // Initial load and periodic refresh
+        document.addEventListener('DOMContentLoaded', function() {
+            refreshPendingSessions();
+            refreshAgentStatus();
+            
+            // Refresh every 30 seconds
+            setInterval(() => {
+                updateStats();
+            }, 30000);
+        });
+    </script>
+</body>
+</html>

@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, redirect, url_for
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session
 import os
 import json
 import re
@@ -8,10 +8,34 @@ from dotenv import load_dotenv
 from setup_rag import RAGSystem
 import uuid
 
+# Import human handoff system
+from human_handoff import init_database, db, init_db_manager
+from human_handoff.session_manager import session_manager
+from human_handoff.agent_routes import agent_bp
+from human_handoff.super_admin_routes import super_admin_bp
+from human_handoff.socketio_events import init_socketio
+from human_handoff.activity_tracker import init_activity_tracker
+
 # Load environment variables
 load_dotenv()
 
 app = Flask(__name__)
+app.secret_key = os.getenv('SECRET_KEY', 'your-secret-key-change-this-in-production')
+
+# Configure SQLAlchemy for human handoff system
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///human_handoff.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# Initialize human handoff system
+init_database(app)
+init_db_manager(app)
+
+# Register blueprints
+app.register_blueprint(agent_bp)
+app.register_blueprint(super_admin_bp)
+
+# Initialize SocketIO for real-time communication
+socketio = init_socketio(app)
 
 # Configure Gemini API
 genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
@@ -60,8 +84,8 @@ if not rag_initialized:
 
 # Mock database - In production, use a real database
 COUNTRIES = [
-    'United States', 'Canada', 'United Kingdom', 'Australia', 
-    'Germany', 'France', 'Netherlands', 'New Zealand', 
+    'United States', 'Canada', 'United Kingdom', 'Australia',
+    'Germany', 'France', 'Netherlands', 'New Zealand',
     'Singapore', 'Ireland', 'Japan', 'South Korea', 'Other'
 ]
 
@@ -362,12 +386,29 @@ def chat():
     """Handle chat messages"""
     if not request.json or 'message' not in request.json:
         return jsonify({'error': 'Invalid request'}), 400
-        
+
     user_message = request.json['message'].strip()
     if not user_message:
         return jsonify({'error': 'Empty message'}), 400
-    
+
     context = request.json.get('context', 'Initial conversation')
+
+    # Initialize session and log user message
+    session_info = session_manager.start_session()
+    session_manager.log_user_message(user_message, metadata={'context': context})
+
+    # Check if session is being handled by a human agent
+    if session_manager.is_human_handling_session():
+        # Session is being handled by human - don't let bot respond
+        # Just log the message and return a status indicating human is handling
+        return jsonify({
+            'response': '',  # No bot response
+            'suggestions': [],
+            'type': 'human_handling',
+            'escalated': True,
+            'session_info': session_manager.get_session_info()
+        })
+
 
     try:
         # Try RAG system first (if initialized)
@@ -393,7 +434,17 @@ def chat():
                         
                         # Prepare suggestions based on category
                         suggestions = get_suggestions_for_category(top_result.get('category', 'general'))
-                        
+
+                        # Log successful bot response
+                        session_manager.log_bot_message(
+                            top_result['answer'],
+                            metadata={
+                                'source': 'RAG',
+                                'score': top_result['score'],
+                                'category': top_result.get('category', 'general')
+                            }
+                        )
+
                         return jsonify({
                             'response': top_result['answer'],
                             'suggestions': suggestions,
@@ -413,6 +464,10 @@ def chat():
             else:
                 greeting = "Good evening!"
             response = f"{greeting} I'm EduConsult, your study abroad assistant. How can I help you today?"
+
+            # Log greeting response
+            session_manager.log_bot_message(response, metadata={'source': 'greeting'})
+
             return jsonify({
                 'response': response,
                 'suggestions': ['Choose country', 'Popular courses', 'Talk to advisor'],
@@ -506,7 +561,7 @@ def chat():
         # Check for button selections
         # Clean country name from emoji if present
         clean_message = re.sub(r'[^\w\s]', '', user_message).strip()
-        
+
         if clean_message in COUNTRIES:
             # Country selected
             country = clean_message
@@ -528,7 +583,7 @@ def chat():
                 'Japan': '🇯🇵'
             }
             emoji = country_emojis.get(country, '🌍')
-            
+
             response = f"{emoji} Great choice! Here are popular courses in {country}:"
             return jsonify({
                 'response': response,
@@ -625,27 +680,66 @@ def chat():
         # 2. Use semantic understanding for free text (Gemini)
         semantic_result = get_semantic_response(user_message, context)
         if semantic_result['confidence'] == 'high' or semantic_result['intent'] in ['greeting', 'general_info']:
+            # Log semantic response
+            session_manager.log_bot_message(
+                semantic_result['suggested_reply'],
+                metadata={
+                    'source': 'semantic',
+                    'confidence': semantic_result['confidence'],
+                    'intent': semantic_result['intent']
+                }
+            )
+
             return jsonify({
                 'response': semantic_result['suggested_reply'],
                 'suggestions': ['Choose country'] + COUNTRIES[:5] + ['Explore by field'],
                 'type': 'general'
             })
         # 3. Escalate to human agent if neither RAG nor LLM is confident
-        advisor = CUSTOMER_ADVISORS[3]  # General counselor
-        response = f"""I apologize, but I'm not sure about that specific query. Would you like to speak with {advisor['name']}, our {advisor['specialization']} expert?
+        fallback_response = "I apologize, but I'm not sure about that specific query. Let me connect you with one of our human experts who can provide you with personalized assistance."
+
+        # Log the fallback response and trigger human handoff
+        session_manager.log_bot_message(fallback_response, is_fallback=True)
+        escalation_success = session_manager.handle_fallback(
+            fallback_response,
+            reason="Bot unable to provide adequate response - low confidence"
+        )
+
+        if escalation_success:
+            response = f"""{fallback_response}
+
+🔄 **You're now in the queue for human assistance.**
+
+A human agent will join this conversation shortly to help you with your query. Please wait a moment while we connect you.
+
+In the meantime, you can:
+- Continue asking questions (they'll be saved for the agent)
+- Or wait for the agent to respond"""
+
+            return jsonify({
+                'response': response,
+                'suggestions': ['Wait for agent', 'Ask another question', 'Start over'],
+                'type': 'human_handoff_initiated',
+                'escalated': True,
+                'session_info': session_manager.get_session_info()
+            })
+        else:
+            # Fallback to traditional advisor contact if escalation fails
+            advisor = CUSTOMER_ADVISORS[3]  # General counselor
+            response = f"""I apologize, but I'm not sure about that specific query. Would you like to speak with {advisor['name']}, our {advisor['specialization']} expert?
 
 Contact details:
 📞 Phone: {advisor['phone']}
 🔧 Expertise: {advisor['specialization']}
 
 They can provide you with personalized assistance and detailed information."""
-        
-        return jsonify({
-            'response': response,
-            'suggestions': ['Yes, connect me', 'No, continue with bot', 'Start over'],
-            'type': 'escalation_offer',
-            'advisor': advisor
-        })
+
+            return jsonify({
+                'response': response,
+                'suggestions': ['Yes, connect me', 'No, continue with bot', 'Start over'],
+                'type': 'escalation_offer',
+                'advisor': advisor
+            })
     except Exception as e:
         return jsonify({
             'response': f"Sorry, I encountered an error while processing your request: {e}",
@@ -719,4 +813,8 @@ def get_suggestions_for_category(category):
     return CATEGORY_SUGGESTIONS.get(category.lower(), CATEGORY_SUGGESTIONS['general'])
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    # Initialize activity tracker
+    init_activity_tracker(app)
+
+    # Use SocketIO run instead of app.run for real-time features
+    socketio.run(app, debug=True, host='0.0.0.0', port=5000)

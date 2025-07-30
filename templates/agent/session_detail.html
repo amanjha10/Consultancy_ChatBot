@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Session {{ session.session_id[:8] }} - Agent Dashboard</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f6fa;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .back-btn {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: none;
+            padding: 0.5rem;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+        }
+
+        .back-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .session-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #4CAF50;
+        }
+
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+            background: white;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+
+        .chat-header {
+            background: #f8f9fa;
+            padding: 1rem 2rem;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .session-details {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .session-id {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .session-meta {
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .chat-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.2s ease;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .messages-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem;
+            background: #f8f9fa;
+        }
+
+        .message {
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+        }
+
+        .message.user {
+            flex-direction: row-reverse;
+        }
+
+        .message-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+
+        .message.user .message-avatar {
+            background: #667eea;
+        }
+
+        .message.bot .message-avatar {
+            background: #28a745;
+        }
+
+        .message.agent .message-avatar {
+            background: #fd7e14;
+        }
+
+        .message-content {
+            max-width: 70%;
+            background: white;
+            padding: 0.75rem 1rem;
+            border-radius: 15px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .message.user .message-content {
+            background: #667eea;
+            color: white;
+        }
+
+        .message-meta {
+            font-size: 0.75rem;
+            color: #666;
+            margin-top: 0.25rem;
+        }
+
+        .message.user .message-meta {
+            color: rgba(255,255,255,0.8);
+        }
+
+        .input-container {
+            background: white;
+            padding: 1rem 2rem;
+            border-top: 1px solid #e9ecef;
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .message-input {
+            flex: 1;
+            padding: 0.75rem 1rem;
+            border: 2px solid #e9ecef;
+            border-radius: 25px;
+            font-size: 1rem;
+            outline: none;
+            resize: none;
+            min-height: 44px;
+            max-height: 120px;
+        }
+
+        .message-input:focus {
+            border-color: #667eea;
+        }
+
+        .send-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: background 0.2s ease;
+        }
+
+        .send-btn:hover {
+            background: #5a6fd8;
+        }
+
+        .send-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .typing-indicator {
+            padding: 0.5rem 1rem;
+            font-style: italic;
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .connection-status {
+            padding: 0.5rem 1rem;
+            background: #d4edda;
+            color: #155724;
+            border-bottom: 1px solid #c3e6cb;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+
+        .connection-status.disconnected {
+            background: #f8d7da;
+            color: #721c24;
+            border-bottom-color: #f5c6cb;
+        }
+
+        @media (max-width: 768px) {
+            .header {
+                padding: 1rem;
+            }
+            
+            .chat-header {
+                padding: 1rem;
+                flex-direction: column;
+                gap: 1rem;
+                align-items: flex-start;
+            }
+            
+            .input-container {
+                padding: 1rem;
+            }
+            
+            .message-content {
+                max-width: 85%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-left">
+            <a href="/agent/dashboard" class="back-btn">
+                <i class="fas fa-arrow-left"></i>
+            </a>
+            <h1><i class="fas fa-comments"></i> Session Chat</h1>
+        </div>
+        <div class="session-info">
+            <div class="status-indicator"></div>
+            <span>{{ agent.name }}</span>
+        </div>
+    </div>
+
+    <div class="chat-container">
+        <div id="connection-status" class="connection-status">
+            <i class="fas fa-wifi"></i> Connected to real-time chat
+        </div>
+
+        <div class="chat-header">
+            <div class="session-details">
+                <div class="session-id">Session: {{ session.session_id }}</div>
+                <div class="session-meta">
+                    Started: {{ session.created_at.strftime('%Y-%m-%d %H:%M') if session.created_at else 'N/A' }} | 
+                    Escalated: {{ session.escalated_at.strftime('%Y-%m-%d %H:%M') if session.escalated_at else 'N/A' }}
+                </div>
+                <div class="session-meta">
+                    Reason: {{ session.escalation_reason or 'Bot unable to help' }}
+                </div>
+            </div>
+            <div class="chat-actions">
+                <button class="btn btn-success" onclick="completeSession()">
+                    <i class="fas fa-check"></i> Complete Session
+                </button>
+                <button class="btn btn-secondary" onclick="refreshMessages()">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+            </div>
+        </div>
+
+        <div class="messages-container" id="messages-container">
+            {% for message in messages %}
+            <div class="message {{ message.sender_type }}">
+                <div class="message-avatar">
+                    {% if message.sender_type == 'user' %}
+                        <i class="fas fa-user"></i>
+                    {% elif message.sender_type == 'bot' %}
+                        <i class="fas fa-robot"></i>
+                    {% else %}
+                        <i class="fas fa-user-tie"></i>
+                    {% endif %}
+                </div>
+                <div class="message-content">
+                    {{ message.message_content }}
+                    <div class="message-meta">
+                        {{ message.timestamp.strftime('%H:%M') if message.timestamp else 'N/A' }}
+                        {% if message.sender_type == 'agent' %}
+                            - {{ agent.name }}
+                        {% elif message.sender_type == 'bot' %}
+                            - EduConsult Bot
+                        {% else %}
+                            - User
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div id="typing-indicator" class="typing-indicator" style="display: none;">
+            User is typing...
+        </div>
+
+        <div class="input-container">
+            <textarea 
+                id="message-input" 
+                class="message-input" 
+                placeholder="Type your message to the user..."
+                rows="1"
+            ></textarea>
+            <button id="send-btn" class="send-btn" onclick="sendMessage()">
+                <i class="fas fa-paper-plane"></i> Send
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Socket.IO connection
+        const socket = io();
+        
+        // Session and agent information
+        const sessionId = '{{ session.session_id }}';
+        const agentId = '{{ agent.agent_id }}';
+        const agentName = '{{ agent.name }}';
+        
+        // DOM elements
+        const messagesContainer = document.getElementById('messages-container');
+        const messageInput = document.getElementById('message-input');
+        const sendBtn = document.getElementById('send-btn');
+        const typingIndicator = document.getElementById('typing-indicator');
+        const connectionStatus = document.getElementById('connection-status');
+
+        // Socket event handlers
+        socket.on('connect', function() {
+            console.log('Connected to server');
+            connectionStatus.className = 'connection-status';
+            connectionStatus.innerHTML = '<i class="fas fa-wifi"></i> Connected to real-time chat';
+            
+            // Join the session room
+            socket.emit('join_session', {
+                session_id: sessionId,
+                user_type: 'agent'
+            });
+        });
+
+        socket.on('disconnect', function() {
+            console.log('Disconnected from server');
+            connectionStatus.className = 'connection-status disconnected';
+            connectionStatus.innerHTML = '<i class="fas fa-wifi"></i> Disconnected from server';
+        });
+
+        socket.on('new_message', function(data) {
+            if (data.session_id === sessionId && data.socket_id !== socket.id) {
+                addMessageToChat(data);
+            }
+        });
+
+        socket.on('user_typing_status', function(data) {
+            if (data.is_typing) {
+                typingIndicator.style.display = 'block';
+            } else {
+                typingIndicator.style.display = 'none';
+            }
+        });
+
+        // Functions
+        function sendMessage() {
+            const message = messageInput.value.trim();
+            if (!message) return;
+
+            // Disable send button
+            sendBtn.disabled = true;
+            
+            // Send via Socket.IO for real-time delivery
+            socket.emit('send_message', {
+                session_id: sessionId,
+                message: message,
+                sender_type: 'agent',
+                sender_id: agentId
+            });
+
+            // Also send via HTTP API for database storage
+            fetch(`/agent/api/session/${sessionId}/send-message`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    message: message
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Add message to chat locally
+                    addMessageToChat({
+                        sender_type: 'agent',
+                        sender_id: agentId,
+                        message_content: message,
+                        timestamp: new Date().toISOString()
+                    });
+                    
+                    // Clear input
+                    messageInput.value = '';
+                    messageInput.style.height = 'auto';
+                } else {
+                    alert('Failed to send message: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error sending message:', error);
+                alert('Error sending message');
+            })
+            .finally(() => {
+                sendBtn.disabled = false;
+                messageInput.focus();
+            });
+        }
+
+        function addMessageToChat(messageData) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${messageData.sender_type}`;
+            
+            const avatarIcon = messageData.sender_type === 'user' ? 'fa-user' : 
+                              messageData.sender_type === 'bot' ? 'fa-robot' : 'fa-user-tie';
+            
+            const senderName = messageData.sender_type === 'agent' ? agentName :
+                              messageData.sender_type === 'bot' ? 'EduConsult Bot' : 'User';
+            
+            const timestamp = new Date(messageData.timestamp).toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            
+            messageDiv.innerHTML = `
+                <div class="message-avatar">
+                    <i class="fas ${avatarIcon}"></i>
+                </div>
+                <div class="message-content">
+                    ${messageData.message_content}
+                    <div class="message-meta">
+                        ${timestamp} - ${senderName}
+                    </div>
+                </div>
+            `;
+            
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function completeSession() {
+            if (confirm('Are you sure you want to mark this session as completed?')) {
+                fetch(`/agent/api/session/${sessionId}/complete`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Session completed successfully!');
+                        window.location.href = '/agent/dashboard';
+                    } else {
+                        alert('Failed to complete session: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error completing session');
+                });
+            }
+        }
+
+        function refreshMessages() {
+            location.reload();
+        }
+
+        // Event listeners
+        messageInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        messageInput.addEventListener('input', function() {
+            // Auto-resize textarea
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+            
+            // Send typing indicator
+            socket.emit('agent_typing', {
+                session_id: sessionId,
+                agent_id: agentId,
+                is_typing: this.value.length > 0
+            });
+        });
+
+        // Stop typing indicator when input loses focus
+        messageInput.addEventListener('blur', function() {
+            socket.emit('agent_typing', {
+                session_id: sessionId,
+                agent_id: agentId,
+                is_typing: false
+            });
+        });
+
+        // Auto-scroll to bottom on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            messageInput.focus();
+        });
+    </script>
+</body>
+</html>
