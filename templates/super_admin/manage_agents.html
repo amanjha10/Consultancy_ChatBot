@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Agents - Super Admin</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: white;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .super-admin-badge {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 0.3rem 0.8rem;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            margin-left: 1rem;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .admin-info {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .nav-btn, .logout-btn {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: background 0.3s;
+        }
+
+        .nav-btn:hover, .logout-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .container {
+            padding: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .agents-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .agent-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .agent-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.15);
+        }
+
+        .agent-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+        }
+
+        .agent-name {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 0.3rem;
+        }
+
+        .agent-id {
+            font-family: monospace;
+            background: #f0f0f0;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            color: #666;
+        }
+
+        .agent-status {
+            padding: 0.3rem 0.8rem;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-available {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-busy {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-offline {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .agent-info {
+            margin-bottom: 1rem;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .info-label {
+            color: #666;
+            font-weight: 500;
+        }
+
+        .info-value {
+            color: #333;
+        }
+
+        .password-status {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            padding: 0.75rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+
+        .password-set {
+            background: #d4edda;
+            color: #155724;
+            border-left: 4px solid #28a745;
+        }
+
+        .password-not-set {
+            background: #fff3cd;
+            color: #856404;
+            border-left: 4px solid #ffc107;
+        }
+
+        .reset-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: background 0.3s;
+            width: 100%;
+            justify-content: center;
+        }
+
+        .reset-btn:hover {
+            background: #c82333;
+        }
+
+        .reset-btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+
+        .page-title {
+            color: white;
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .page-title h2 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .page-title p {
+            opacity: 0.9;
+        }
+
+        .alert {
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            display: none;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border-left: 4px solid #28a745;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border-left: 4px solid #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div>
+            <h1>
+                <i class="fas fa-crown"></i> Super Admin Dashboard
+                <span class="super-admin-badge">SUPER ADMIN</span>
+            </h1>
+        </div>
+        <div class="header-actions">
+            <a href="{{ url_for('super_admin.dashboard') }}" class="nav-btn">
+                <i class="fas fa-dashboard"></i> Dashboard
+            </a>
+            <div class="admin-info">
+                <i class="fas fa-user-shield"></i>
+                <span>{{ super_admin.name }}</span>
+            </div>
+            <a href="{{ url_for('super_admin.logout') }}" class="logout-btn">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </a>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="page-title">
+            <h2><i class="fas fa-users-cog"></i> Manage Agents</h2>
+            <p>Manage agent accounts and reset passwords</p>
+        </div>
+
+        <div id="alert-container"></div>
+
+        <div class="agents-grid">
+            {% for agent in agents %}
+            <div class="agent-card">
+                <div class="agent-header">
+                    <div>
+                        <div class="agent-name">{{ agent.name }}</div>
+                        <div class="agent-id">{{ agent.agent_id }}</div>
+                    </div>
+                    <div class="agent-status status-{{ agent.status }}">
+                        {{ agent.status }}
+                    </div>
+                </div>
+
+                <div class="agent-info">
+                    <div class="info-row">
+                        <span class="info-label">Email:</span>
+                        <span class="info-value">{{ agent.email }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Specialization:</span>
+                        <span class="info-value">{{ agent.specialization }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Sessions:</span>
+                        <span class="info-value">{{ agent.current_sessions }}/{{ agent.max_concurrent_sessions }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Last Active:</span>
+                        <span class="info-value">
+                            {% if agent.last_active %}
+                                {{ agent.last_active.strftime('%Y-%m-%d %H:%M') }}
+                            {% else %}
+                                Never
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+
+                <div class="password-status {% if agent.password_set %}password-set{% else %}password-not-set{% endif %}">
+                    {% if agent.password_set %}
+                        <i class="fas fa-check-circle"></i>
+                        <span>Password Set</span>
+                    {% else %}
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <span>First Login Required</span>
+                    {% endif %}
+                </div>
+
+                <button class="reset-btn" onclick="resetPassword('{{ agent.agent_id }}', '{{ agent.name }}')">
+                    <i class="fas fa-key"></i>
+                    Reset Password
+                </button>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <script>
+        function showAlert(message, type) {
+            const container = document.getElementById('alert-container');
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.innerHTML = message;
+            alert.style.display = 'block';
+            
+            container.innerHTML = '';
+            container.appendChild(alert);
+            
+            // Auto-hide after 5 seconds
+            setTimeout(() => {
+                alert.style.display = 'none';
+            }, 5000);
+        }
+
+        function resetPassword(agentId, agentName) {
+            if (!confirm(`Are you sure you want to reset password for ${agentName}?\n\nThis will require the agent to set a new password on their next login.`)) {
+                return;
+            }
+
+            fetch('/super-admin/api/reset-agent-password', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    agent_id: agentId
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    showAlert(`Error: ${data.error}`, 'error');
+                } else {
+                    showAlert(`Success: ${data.message}`, 'success');
+                    // Optionally refresh the page to update status
+                    setTimeout(() => {
+                        location.reload();
+                    }, 2000);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showAlert('Failed to reset password. Please try again.', 'error');
+            });
+        }
+    </script>
+</body>
+</html>

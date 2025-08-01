@@ -64,6 +64,8 @@ def setup_initial_data():
                     current_sessions=0,
                     created_at=datetime.utcnow()
                 )
+                # Set default password for all agents (for demo purposes)
+                agent.set_password('agent123')
                 db.session.add(agent)
             
             db.session.commit()
@@ -71,6 +73,7 @@ def setup_initial_data():
             print('✅ Initial data setup completed successfully!')
             print(f'   👑 Super Admin: super_admin / admin123')
             print(f'   👨‍💼 Agents created: {len(agents)}')
+            print(f'   🔑 Default agent password: agent123')
             
             for agent_data in agents:
                 print(f'      - {agent_data["name"]} ({agent_data["agent_id"]}) - {agent_data["specialization"]}')

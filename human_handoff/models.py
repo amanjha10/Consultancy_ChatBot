@@ -4,11 +4,66 @@ SQLAlchemy models for chat sessions, messages, and agent management
 """
 
 from flask_sqlalchemy import SQLAlchemy
+from flask_login import UserMixin
 from datetime import datetime
+from werkzeug.security import generate_password_hash, check_password_hash
 import json
 import uuid
 
 db = SQLAlchemy()
+
+class Student(UserMixin, db.Model):
+    """Model for student users (authentication)"""
+    __tablename__ = 'students'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    username = db.Column(db.String(80), unique=True, nullable=True)
+    password_hash = db.Column(db.String(255), nullable=False)
+    first_name = db.Column(db.String(50), nullable=False)
+    last_name = db.Column(db.String(50), nullable=False)
+    phone = db.Column(db.String(20), nullable=True)
+    country_of_interest = db.Column(db.String(50), nullable=True)
+    field_of_study = db.Column(db.String(100), nullable=True)
+    study_level = db.Column(db.String(50), nullable=True)
+    is_active = db.Column(db.Boolean, default=True)
+    email_verified = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    last_login = db.Column(db.DateTime, nullable=True)
+    
+    # Relationships
+    chat_sessions = db.relationship('ChatSession', foreign_keys='ChatSession.student_id', backref='student', lazy=True)
+    
+    def set_password(self, password):
+        """Set password hash"""
+        self.password_hash = generate_password_hash(password)
+    
+    def check_password(self, password):
+        """Check if provided password matches the hash"""
+        return check_password_hash(self.password_hash, password)
+    
+    def get_full_name(self):
+        """Get student's full name"""
+        return f"{self.first_name} {self.last_name}"
+    
+    def to_dict(self):
+        """Convert to dictionary for JSON responses"""
+        return {
+            'id': self.id,
+            'email': self.email,
+            'username': self.username,
+            'first_name': self.first_name,
+            'last_name': self.last_name,
+            'full_name': self.get_full_name(),
+            'phone': self.phone,
+            'country_of_interest': self.country_of_interest,
+            'field_of_study': self.field_of_study,
+            'study_level': self.study_level,
+            'is_active': self.is_active,
+            'email_verified': self.email_verified,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'last_login': self.last_login.isoformat() if self.last_login else None
+        }
 
 class ChatSession(db.Model):
     """Model for chat sessions"""
@@ -16,7 +71,8 @@ class ChatSession(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     session_id = db.Column(db.String(100), unique=True, nullable=False, default=lambda: str(uuid.uuid4()))
-    user_id = db.Column(db.String(100))
+    user_id = db.Column(db.String(100))  # Keep for backward compatibility with guest sessions
+    student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=True)  # New FK for authenticated users
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     status = db.Column(db.String(20), default='active')  # active, closed, escalated
@@ -95,6 +151,8 @@ class Agent(db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False)
     phone = db.Column(db.String(20))
     specialization = db.Column(db.String(100))
+    password_hash = db.Column(db.String(255), nullable=True)
+    password_set = db.Column(db.Boolean, default=False)  # True if agent has set their password
     status = db.Column(db.String(20), default='available')  # available, busy, offline
     max_concurrent_sessions = db.Column(db.Integer, default=5)
     current_sessions = db.Column(db.Integer, default=0)
@@ -130,6 +188,26 @@ class Agent(db.Model):
         return (self.is_active and 
                 self.status == 'available' and 
                 self.current_sessions < self.max_concurrent_sessions)
+
+    def set_password(self, password):
+        """Set password hash"""
+        self.password_hash = generate_password_hash(password)
+        self.password_set = True
+
+    def check_password(self, password):
+        """Check if provided password matches the hash"""
+        if not self.password_hash:
+            return False
+        return check_password_hash(self.password_hash, password)
+    
+    def is_first_login(self):
+        """Check if this is the agent's first login (no password set)"""
+        return not self.password_set or not self.password_hash
+    
+    def reset_password(self):
+        """Reset password - only for super admin use"""
+        self.password_hash = None
+        self.password_set = False
 
 class AgentSession(db.Model):
     """Model for agent-session relationships"""
@@ -197,33 +275,51 @@ def init_database(app):
         # Create all tables
         db.create_all()
         
-        # Insert default agents if they don't exist
-        default_agents = [
-            {'agent_id': 'agent_001', 'name': 'Sarah Johnson', 'email': 'sarah.johnson@educonsult.com', 'specialization': 'General Counselor'},
-            {'agent_id': 'agent_002', 'name': 'Michael Chen', 'email': 'michael.chen@educonsult.com', 'specialization': 'US Universities Specialist'},
-            {'agent_id': 'agent_003', 'name': 'Emma Williams', 'email': 'emma.williams@educonsult.com', 'specialization': 'UK Universities Specialist'},
-            {'agent_id': 'agent_004', 'name': 'David Kumar', 'email': 'david.kumar@educonsult.com', 'specialization': 'Technical Support'}
-        ]
-        
-        for agent_data in default_agents:
-            existing_agent = Agent.query.filter_by(agent_id=agent_data['agent_id']).first()
-            if not existing_agent:
-                agent = Agent(**agent_data)
-                db.session.add(agent)
-        
+        # Only try to insert default agents if the Agent table structure is complete
+        try:
+            # Test if we can query agents (this will fail if password_hash column doesn't exist)
+            test_query = Agent.query.first()
+            
+            # Insert default agents if they don't exist
+            default_agents = [
+                {'agent_id': 'agent_001', 'name': 'Sarah Johnson', 'email': 'sarah.johnson@educonsult.com', 'specialization': 'General Counselor'},
+                {'agent_id': 'agent_002', 'name': 'Michael Chen', 'email': 'michael.chen@educonsult.com', 'specialization': 'US Universities Specialist'},
+                {'agent_id': 'agent_003', 'name': 'Emma Williams', 'email': 'emma.williams@educonsult.com', 'specialization': 'UK Universities Specialist'},
+                {'agent_id': 'agent_004', 'name': 'David Kumar', 'email': 'david.kumar@educonsult.com', 'specialization': 'Technical Support'}
+            ]
+            
+            for agent_data in default_agents:
+                existing_agent = Agent.query.filter_by(agent_id=agent_data['agent_id']).first()
+                if not existing_agent:
+                    agent = Agent(**agent_data)
+                    agent.set_password('agent123')  # Default password for demo
+                    db.session.add(agent)
+            
+            db.session.commit()
+        except Exception as e:
+            # If there's an error (like missing password_hash column), just create the tables
+            # The migration script will handle adding default agents with passwords
+            db.session.rollback()
+            print(f"Note: Agent initialization skipped, run migration script if needed: {e}")
+
         try:
             db.session.commit()
         except Exception as e:
             db.session.rollback()
             print(f"Error initializing database: {e}")
 
-def get_or_create_session(session_id, user_id=None):
+def get_or_create_session(session_id, user_id=None, student_id=None):
     """Get existing session or create new one"""
     session = ChatSession.query.filter_by(session_id=session_id).first()
     if not session:
-        session = ChatSession(session_id=session_id, user_id=user_id)
+        session = ChatSession(session_id=session_id, user_id=user_id, student_id=student_id)
         db.session.add(session)
         db.session.commit()
+    else:
+        # Update student_id if user becomes authenticated during session
+        if student_id and not session.student_id:
+            session.student_id = student_id
+            db.session.commit()
     return session
 
 class SuperAdmin(db.Model):

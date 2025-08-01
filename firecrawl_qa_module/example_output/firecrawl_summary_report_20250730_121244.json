@@ -1,0 +1,31 @@
+{
+    "timestamp": "2025-07-30T12:12:44.604818",
+    "crawl_statistics": {
+        "total_urls_processed": 2,
+        "successful_crawls": 2,
+        "failed_crawls": 0,
+        "success_rate": "100.0%"
+    },
+    "qa_generation_statistics": {
+        "total_qa_pairs": 126,
+        "average_confidence_score": 0.903,
+        "qa_pairs_by_category": {
+            "application_process": 26,
+            "custom_entries": 58,
+            "scholarships": 8,
+            "career_prospects": 7,
+            "language_requirements": 8,
+            "general_queries": 1,
+            "costs_and_finances": 4,
+            "visa_information": 14
+        },
+        "high_confidence_pairs": 113,
+        "medium_confidence_pairs": 12,
+        "low_confidence_pairs": 1
+    },
+    "sources_processed": [
+        "https://kiec.edu.np",
+        "https://edwisefoundation.com"
+    ],
+    "processing_time": "0:06:28.082231"
+}

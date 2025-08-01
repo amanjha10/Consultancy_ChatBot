@@ -15,7 +15,17 @@
                 <i class="fas fa-graduation-cap"></i>
                 <h1>EduConsult</h1>
             </div>
-            <div class="tagline">Your Gateway to Global Education</div>
+            <div class="header-right">
+                <div class="tagline">Your Gateway to Global Education</div>
+                {% if current_user.is_authenticated %}
+                <div class="user-info">
+                    <span class="user-greeting">Welcome, {{ current_user.get_full_name() }}</span>
+                    <a href="/auth/logout" class="logout-btn">
+                        <i class="fas fa-sign-out-alt"></i> Logout
+                    </a>
+                </div>
+                {% endif %}
+            </div>
         </header>
 
         <!-- Chat Container -->

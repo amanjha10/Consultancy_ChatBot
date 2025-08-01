@@ -88,61 +88,94 @@ class ChatBot {
     initializeSocket() {
         // Initialize Socket.IO connection if available
         if (typeof io !== 'undefined') {
-            this.socket = io();
+            try {
+                // More explicit connection configuration for better browser compatibility
+                this.socket = io({
+                    transports: ['websocket', 'polling'],
+                    timeout: 20000,
+                    reconnection: true,
+                    reconnectionDelay: 1000,
+                    reconnectionAttempts: 5,
+                    maxReconnectionAttempts: 5
+                });
 
-            this.socket.on('connect', () => {
-                console.log('Connected to real-time chat');
-                console.log('Socket ID:', this.socket.id);
-                this.showConnectionStatus('Connected to real-time chat', 'success');
-            });
+                this.socket.on('connect', () => {
+                    console.log('Connected to real-time chat');
+                    console.log('Socket ID:', this.socket.id);
+                    console.log('Transport:', this.socket.io.engine.transport.name);
+                    this.showConnectionStatus('Connected to real-time chat', 'success');
+                });
 
-            this.socket.on('disconnect', () => {
-                console.log('Disconnected from real-time chat');
-                this.showConnectionStatus('Disconnected from real-time chat', 'error');
-            });
+                this.socket.on('disconnect', (reason) => {
+                    console.log('Disconnected from real-time chat. Reason:', reason);
+                    this.showConnectionStatus('Disconnected from real-time chat', 'error');
+                });
 
-            this.socket.on('new_message', (data) => {
-                console.log('Received new_message event:', data);
-                console.log('Current sessionId:', this.sessionId);
+                this.socket.on('connect_error', (error) => {
+                    console.error('Socket.IO connection error:', error);
+                    this.showConnectionStatus('Connection error - check network', 'error');
+                });
 
-                if (data.sender_type === 'agent' && data.session_id === this.sessionId) {
-                    console.log('Adding agent message to chat');
-                    this.addMessage(data.message_content, 'agent', 'agent_message', {
-                        sender_name: data.sender_name || 'Agent',
-                        timestamp: data.timestamp
-                    });
-                } else {
-                    console.log('Message not for this session or not from agent');
-                }
-            });
+                this.socket.on('reconnect', (attemptNumber) => {
+                    console.log('Reconnected after', attemptNumber, 'attempts');
+                    this.showConnectionStatus('Reconnected to real-time chat', 'success');
+                });
 
-            this.socket.on('human_takeover', (data) => {
-                if (data.session_id === this.sessionId) {
-                    this.handleHumanTakeover(data);
-                }
-            });
+                this.socket.on('reconnect_failed', () => {
+                    console.error('Failed to reconnect to server');
+                    this.showConnectionStatus('Failed to reconnect - please refresh', 'error');
+                });
 
-            this.socket.on('session_escalated_notification', (data) => {
-                if (data.session_id === this.sessionId) {
-                    this.showEscalationNotification(data.message);
-                }
-            });
+                this.socket.on('new_message', (data) => {
+                    console.log('Received new_message event:', data);
+                    console.log('Current sessionId:', this.sessionId);
 
-            this.socket.on('agent_assigned_notification', (data) => {
-                if (data.session_id === this.sessionId) {
-                    this.showAgentAssignedNotification(data);
-                }
-            });
+                    if (data.sender_type === 'agent' && data.session_id === this.sessionId) {
+                        console.log('Adding agent message to chat');
+                        this.addMessage(data.message_content, 'agent', 'agent_message', {
+                            sender_name: data.sender_name || 'Agent',
+                            timestamp: data.timestamp
+                        });
+                    } else {
+                        console.log('Message not for this session or not from agent');
+                    }
+                });
 
-            this.socket.on('session_completed_notification', (data) => {
-                if (data.session_id === this.sessionId) {
-                    this.showSessionCompletedNotification(data.message);
-                }
-            });
+                this.socket.on('human_takeover', (data) => {
+                    if (data.session_id === this.sessionId) {
+                        this.handleHumanTakeover(data);
+                    }
+                });
 
-            this.socket.on('agent_typing_status', (data) => {
-                this.handleAgentTyping(data.is_typing);
-            });
+                this.socket.on('session_escalated_notification', (data) => {
+                    if (data.session_id === this.sessionId) {
+                        this.showEscalationNotification(data.message);
+                    }
+                });
+
+                this.socket.on('agent_assigned_notification', (data) => {
+                    if (data.session_id === this.sessionId) {
+                        this.showAgentAssignedNotification(data);
+                    }
+                });
+
+                this.socket.on('session_completed_notification', (data) => {
+                    if (data.session_id === this.sessionId) {
+                        this.showSessionCompletedNotification(data.message);
+                    }
+                });
+
+                this.socket.on('agent_typing_status', (data) => {
+                    this.handleAgentTyping(data.is_typing);
+                });
+
+            } catch (error) {
+                console.error('Failed to initialize Socket.IO:', error);
+                this.showConnectionStatus('Real-time chat unavailable', 'error');
+            }
+        } else {
+            console.warn('Socket.IO not available - real-time features disabled');
+            this.showConnectionStatus('Real-time chat unavailable', 'warning');
         }
     }
 
@@ -186,27 +219,13 @@ class ChatBot {
                 this.clearChat();
             }
             
-            // Add bot response
-            this.addMessage(data.response, 'bot', data.type);
-            
-            // Update context if provided
-            if (data.context) {
-                this.context = { ...this.context, ...data.context };
-            }
-            
-            // Add suggestions if any
-            if (data.suggestions && data.suggestions.length > 0) {
-                this.addSuggestions(data.suggestions, data.type);
-            }
-            
             // Handle human handoff scenarios
             if (data.type === 'human_handoff' && data.advisor) {
                 this.showAdvisorModal(data.advisor);
             } else if (data.type === 'human_handoff_initiated' && data.escalated) {
                 this.handleEscalation(data);
             } else if (data.type === 'human_handling' && data.escalated) {
-                // Session is being handled by human - don't show bot response
-                // Just ensure we're connected to the session room
+                // Session is being handled by human - don't show empty bot response
                 this.isHumanTakeover = true;
                 if (data.session_info && data.session_info.session_id) {
                     this.sessionId = data.session_info.session_id;
@@ -217,7 +236,24 @@ class ChatBot {
                         });
                     }
                 }
+                // Show escalation notification instead of empty response
+                this.showEscalationNotification('Your query has been escalated to our human agent. Please wait while we connect you.');
                 return; // Don't process further - no bot response to show
+            }
+
+            // Add bot response (only if response is not empty)
+            if (data.response && data.response.trim() !== '') {
+                this.addMessage(data.response, 'bot', data.type);
+            }
+            
+            // Update context if provided
+            if (data.context) {
+                this.context = { ...this.context, ...data.context };
+            }
+            
+            // Add suggestions if any
+            if (data.suggestions && data.suggestions.length > 0) {
+                this.addSuggestions(data.suggestions, data.type);
             }
 
             // Extract session information if provided
@@ -294,10 +330,18 @@ class ChatBot {
         messageDiv.appendChild(content);
 
         this.messagesContainer.appendChild(messageDiv);
+        
+        // Scroll to bottom to show new message
+        this.scrollToBottom();
     }
 
     formatMessage(text) {
-        return text
+        if (!text || typeof text !== 'string') {
+            console.warn('Invalid text input to formatMessage:', text);
+            return '';
+        }
+        
+        const formatted = text
             .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
             .replace(/\*(.*?)\*/g, '<em>$1</em>')
             .replace(/\n/g, '<br>')
@@ -308,6 +352,8 @@ class ChatBot {
             .replace(/⭐/g, '<i class="fas fa-star" style="color: #ffc107;"></i>')
             .replace(/📞/g, '<i class="fas fa-phone" style="color: #28a745;"></i>')
             .replace(/🎓/g, '<i class="fas fa-graduation-cap" style="color: #667eea;"></i>');
+        
+        return formatted;
     }
 
     addSuggestions(suggestions) {
@@ -616,12 +662,8 @@ document.addEventListener('DOMContentLoaded', () => {
         'Talk to advisor'
     ];
     
-    // Service worker registration for offline functionality (optional)
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/sw.js').catch(err => {
-            console.log('Service worker registration failed:', err);
-        });
-    }
+    // Note: Service worker functionality removed to prevent 404 errors
+    // Can be re-added later if offline functionality is needed
 });
 
 // Handle page visibility changes

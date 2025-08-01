@@ -1,0 +1,150 @@
+{
+    "custom_entries": {
+        "global_opportunities": [
+            {
+                "question": "Where can I find the latest data on international student mobility in the US?",
+                "answer": "The 2024 Open Doors data provides the latest information on international student mobility in the United States.  You can view this report at: https://educationusa.state.gov/us-higher-education-professionals/recruitment-resources/open-doors-report",
+                "section": "US Student Mobility Data",
+                "page": 0,
+                "document": "EducationUSA |",
+                "chunk_id": "a6107b9b-0d63-4994-8cd5-2e3c074dc1f3"
+            },
+            {
+                "question": "What inspirational resources are available for prospective international students?",
+                "answer": "The #StudyWithUS campaign offers inspirational videos to motivate prospective international students.  One such video can be viewed here: https://youtu.be/arFUQNVeVWw",
+                "section": "Inspirational Resources",
+                "page": 0,
+                "document": "EducationUSA |",
+                "chunk_id": "4f1067f7-0f8e-4d28-aa4b-bb1cc7a9eb52"
+            },
+            {
+                "question": "What are the different EducationUSA website sections for various user groups?",
+                "answer": "The website caters to International Students, U.S. Higher Education Professionals, and Foreign Institutions and Governments, each with dedicated sections.",
+                "section": "Website Navigation",
+                "page": 0,
+                "document": "EducationUSA |",
+                "chunk_id": "f2387544-1b33-4383-8c0e-e9f7f12946fe"
+            }
+        ],
+        "process_information": [
+            {
+                "question": "What resources are available to help me navigate the five steps of studying in the US?",
+                "answer": "EducationUSA provides a comprehensive guide outlining the five steps to studying in the US.  You can access this resource at: https://educationusa.state.gov/your-5-steps-us-study",
+                "section": "US Study Process",
+                "page": 0,
+                "document": "EducationUSA |",
+                "chunk_id": "df4ccc62-7b5c-49f8-8699-be642a8db3ba"
+            }
+        ],
+        "custom_entries": [
+            {
+                "question": "When and where is the 2025 EducationUSA MENA Forum taking place?",
+                "answer": "The 2025 EducationUSA MENA Regional Forum will be held from October 14-16, 2025.  More details are available at: https://educationusa.state.gov/events/2025-educationusa-middle-east-north-africa-mena-regional-forum",
+                "section": "Upcoming Events",
+                "page": 0,
+                "document": "EducationUSA |",
+                "chunk_id": "f892b636-fb91-4b14-a5b9-b9d139bb2c87"
+            },
+            {
+                "question": "Are there videos available showcasing cutting-edge fields of study in the US?",
+                "answer": "Yes, there is a new video titled \"Studying Cutting Edge Fields\" as part of the #StudyWithUS campaign. You can watch it here: https://youtu.be/TNCCz4InssE",
+                "section": "Informational Videos",
+                "page": 0,
+                "document": "EducationUSA |",
+                "chunk_id": "c0a669ba-0c6f-4346-a54d-d31c05c9e7c4"
+            },
+            {
+                "question": "Does EducationUSA offer resources specifically for U.S. higher education professionals?",
+                "answer": "Yes, EducationUSA provides resources specifically for recruitment and other support for U.S. Higher Education Professionals.  The section can be found at: https://educationusa.state.gov/us-higher-education-professionals",
+                "section": "Resources for US Higher Education Professionals",
+                "page": 0,
+                "document": "EducationUSA |",
+                "chunk_id": "54bbad44-9a88-498c-9dc7-0a1872a204ee"
+            },
+            {
+                "question": "What types of events does EducationUSA organize?",
+                "answer": "EducationUSA hosts various events, including regional forums (like the example provided for the Middle East and North Africa) and other events tailored for prospective students and higher education professionals. Check the 'Find an Event' section for details.",
+                "section": "Upcoming Events",
+                "page": 1,
+                "document": "EducationUSA |",
+                "chunk_id": "de0ad4e6-d010-43f8-bb1a-fe6301a9f864"
+            },
+            {
+                "question": "Is EducationUSA the official source of information on U.S. higher education?",
+                "answer": "Yes, EducationUSA is explicitly stated as the official source on U.S. higher education from the U.S. Department of State.",
+                "section": "Authority and Reliability",
+                "page": 1,
+                "document": "EducationUSA |",
+                "chunk_id": "6e4f73a8-f665-4367-9d8a-c96439341aae"
+            },
+            {
+                "question": "Where can I find information about the 2025 EducationUSA Middle East & North Africa Regional Forum?",
+                "answer": "Details about the 2025 EducationUSA MENA Regional Forum can be found via the link provided in the original content.  This event is specifically for U.S. higher education professionals.",
+                "section": "Regional Forums",
+                "page": 1,
+                "document": "EducationUSA |",
+                "chunk_id": "1cb96995-e561-4ee3-aabd-fade0df1672f"
+            }
+        ],
+        "country_specific": [
+            {
+                "question": "Where can I find information for foreign institutions and governments interested in collaborating with US institutions?",
+                "answer": "EducationUSA offers a dedicated section for Foreign Institutions and Governments interested in collaboration.  You can find it at: https://educationusa.state.gov/foreign-institutions-and-governments",
+                "section": "Resources for Foreign Institutions and Governments",
+                "page": 0,
+                "document": "EducationUSA |",
+                "chunk_id": "9703e0f7-b636-4a7c-98d8-ff2517412812"
+            },
+            {
+                "question": "How can I find an EducationUSA advising center near me?",
+                "answer": "Use the 'Find an Advising Center' tool on the EducationUSA website to locate a center based on your country or region.",
+                "section": "Finding an Advisor",
+                "page": 1,
+                "document": "EducationUSA |",
+                "chunk_id": "cc8de881-a2e5-4f2e-bd32-b8972563fb7c"
+            }
+        ],
+        "merit_based": [
+            {
+                "question": "What kind of higher education opportunities are available in the U.S.?",
+                "answer": "The U.S. offers a vast range of higher education opportunities, including thousands of academic programs across numerous disciplines at world-class institutions, with unmatched flexibility.",
+                "section": "Study Opportunities",
+                "page": 1,
+                "document": "EducationUSA |",
+                "chunk_id": "82b15a99-2b39-4fa8-be17-8fb6c8636747"
+            }
+        ]
+    },
+    "application_process": {
+        "process_information": [
+            {
+                "question": "What is EducationUSA and what services does it offer?",
+                "answer": "EducationUSA is a U.S. Department of State network of over 430 advising centers in more than 175 countries.  It provides accurate, comprehensive, and current information about studying at accredited U.S. institutions, assisting students with the application process and connecting them with opportunities.",
+                "section": "About EducationUSA",
+                "page": 1,
+                "document": "EducationUSA |",
+                "chunk_id": "76a195b1-0df4-41f5-affd-995eaa1a2b05"
+            },
+            {
+                "question": "What are the five steps to studying in the U.S. as outlined by EducationUSA?",
+                "answer": "While the exact steps aren't detailed here, the website (linked in the prompt) outlines a process likely including: research, planning, application, financing, and visa processes.  Consult the '5 Steps to U.S. Study' page for specifics.",
+                "section": "Application Process",
+                "page": 1,
+                "document": "EducationUSA |",
+                "chunk_id": "c19950ed-7039-4ce6-8852-e6415327c327"
+            }
+        ]
+    },
+    "scholarships": {
+        "cost_information": [
+            {
+                "question": "Where can I find information about financial aid for studying in the U.S.?",
+                "answer": "The EducationUSA website has a dedicated section ('Find Financial Aid')  providing resources and information about funding opportunities for international students in the United States.",
+                "section": "Financial Aid",
+                "page": 1,
+                "document": "EducationUSA |",
+                "chunk_id": "6cfa6cac-27c8-41d1-987c-fed4a4468542"
+            }
+        ]
+    }
+}

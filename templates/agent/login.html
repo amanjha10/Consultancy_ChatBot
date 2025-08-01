@@ -138,7 +138,11 @@
     <div class="login-container">
         <div class="login-header">
             <h1><i class="fas fa-user-tie"></i> Agent Login</h1>
+            {% if first_time %}
+            <p>First-time login - Please set your password</p>
+            {% else %}
             <p>EduConsult Human Support Dashboard</p>
+            {% endif %}
         </div>
 
         {% if error %}
@@ -150,17 +154,40 @@
         <form method="POST">
             <div class="form-group">
                 <label for="agent_id">Agent ID</label>
-                <input type="text" id="agent_id" name="agent_id" required placeholder="Enter your agent ID">
+                <input type="text" id="agent_id" name="agent_id" 
+                       {% if agent_id %}value="{{ agent_id }}"{% endif %}
+                       required placeholder="Enter your agent ID">
+            </div>
+
+            {% if first_time %}
+            <!-- First-time password setup -->
+            <div class="form-group">
+                <label for="new_password">Set New Password</label>
+                <input type="password" id="new_password" name="new_password" 
+                       required placeholder="Create your password (min 6 characters)">
             </div>
 
             <div class="form-group">
+                <label for="confirm_password">Confirm Password</label>
+                <input type="password" id="confirm_password" name="confirm_password" 
+                       required placeholder="Confirm your password">
+            </div>
+
+            <button type="submit" class="login-btn">
+                <i class="fas fa-key"></i> Set Password & Login
+            </button>
+            {% else %}
+            <!-- Regular login -->
+            <div class="form-group">
                 <label for="password">Password</label>
-                <input type="password" id="password" name="password" required placeholder="Enter your password">
+                <input type="password" id="password" name="password" 
+                       required placeholder="Enter your password">
             </div>
 
             <button type="submit" class="login-btn">
                 <i class="fas fa-sign-in-alt"></i> Login to Dashboard
             </button>
+            {% endif %}
         </form>
 
         <div class="agent-info">
@@ -171,9 +198,16 @@
                 <li><strong>agent_003</strong> - Emma Williams (UK Universities)</li>
                 <li><strong>agent_004</strong> - David Kumar (Technical Support)</li>
             </ul>
-            <p style="margin-top: 0.5rem; font-style: italic;">
-                For demo purposes, use any agent ID above with any password.
+            {% if first_time %}
+            <p style="margin-top: 0.5rem; font-style: italic; color: #2196F3;">
+                <strong>First-time login:</strong> Create your own secure password (minimum 6 characters)
             </p>
+            {% else %}
+            <p style="margin-top: 0.5rem; font-style: italic;">
+                Use your agent ID and the password you set during first login.<br>
+                <small>Forgot password? Contact super admin for reset.</small>
+            </p>
+            {% endif %}
         </div>
 
         <div class="back-link">

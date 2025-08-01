@@ -1,0 +1,28 @@
+{
+    "integration_timestamp": "2025-07-30T12:36:07.933196",
+    "integration_summary": {
+        "status": "completed",
+        "total_categories": 8,
+        "category_breakdown": {
+            "general_queries": 228,
+            "language_requirements": 32,
+            "scholarships": 38,
+            "career_prospects": 14,
+            "application_process": 102,
+            "costs_and_finances": 15,
+            "visa_information": 57,
+            "accommodation": 6
+        },
+        "total_qa_pairs": 492
+    },
+    "data_sources": {
+        "original_education_faq": "existing knowledge base",
+        "firecrawl_data": "web-scraped consultancy data",
+        "admin_faqs": "dynamically added by administrators"
+    },
+    "next_steps": [
+        "Monitor chatbot performance with enhanced knowledge base",
+        "Add more Q&A pairs through admin interface as needed",
+        "Regular updates using Firecrawl module for fresh content"
+    ]
+}

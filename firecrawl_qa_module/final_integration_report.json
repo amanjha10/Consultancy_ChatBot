@@ -1,0 +1,64 @@
+{
+    "integration_timestamp": "2025-07-30T12:39:04.718604",
+    "integration_status": "completed_successfully",
+    "data_summary": {
+        "total_qa_pairs": 180,
+        "total_categories": 8,
+        "category_breakdown": {
+            "general_queries": 88,
+            "language_requirements": 12,
+            "scholarships": 14,
+            "career_prospects": 6,
+            "application_process": 34,
+            "costs_and_finances": 5,
+            "visa_information": 19,
+            "accommodation": 2
+        }
+    },
+    "data_sources_integrated": {
+        "original_education_faq": "existing knowledge base",
+        "firecrawl_scraped_data": {
+            "source_urls": [
+                "https://kiec.edu.np",
+                "https://edwisefoundation.com",
+                "https://experteducation.com/nepal/",
+                "https://www.aeccglobal.com.np",
+                "https://niec.edu.np",
+                "https://educationusa.state.gov",
+                "https://www.ukcisa.org.uk",
+                "https://www.daad.de/en",
+                "https://www.educanada.ca"
+            ],
+            "success_rate": "90%",
+            "qa_pairs_added": 156
+        },
+        "admin_faqs": "dynamically added by administrators"
+    },
+    "knowledge_base_coverage": {
+        "consultancy_services": "KIEC, Edwise Foundation, Expert Education Nepal, AECC, NIEC",
+        "country_information": "USA, Canada, UK, Australia, Germany",
+        "government_resources": "Official government education portals",
+        "comprehensive_topics": [
+            "Application processes",
+            "Scholarship opportunities",
+            "Visa requirements",
+            "Language requirements",
+            "Accommodation options",
+            "Career prospects",
+            "Cost information"
+        ]
+    },
+    "system_capabilities": {
+        "total_knowledge_base": "180 Q&A pairs",
+        "vector_embeddings": "Generated and stored in ChromaDB",
+        "search_capability": "Semantic similarity search",
+        "confidence_scoring": "Available for answer quality",
+        "admin_management": "Live FAQ addition through web interface"
+    },
+    "next_steps": [
+        "Monitor chatbot performance with enhanced knowledge",
+        "Regular updates using Firecrawl module for fresh content",
+        "Add more Q&A pairs through admin interface as needed",
+        "Consider expanding to more consultancy websites"
+    ]
+}

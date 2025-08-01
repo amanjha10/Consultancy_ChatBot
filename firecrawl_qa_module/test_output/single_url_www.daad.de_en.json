@@ -1,0 +1,88 @@
+{
+    "scholarships": {
+        "non_english_countries": [
+            {
+                "question": "Where can I find a database of scholarships for studying in Germany?",
+                "answer": "The DAAD website provides a scholarship database specifically for studying in Germany: https://www2.daad.de/deutschland/stipendium/datenbank/en/21148-scholarship-database/",
+                "section": "Funding Opportunities in Germany",
+                "page": 0,
+                "document": "German Academic Exchange Service - DAAD",
+                "chunk_id": "5e3c6d17-9a1e-4f59-a728-daed3e442623"
+            },
+            {
+                "question": "How can I find scholarships for studying abroad, outside of Germany?",
+                "answer": "The DAAD website offers resources to find scholarships for studying abroad, although the link is primarily in German.  More information can likely be found by contacting DAAD directly.",
+                "section": "Funding Opportunities Abroad",
+                "page": 0,
+                "document": "German Academic Exchange Service - DAAD",
+                "chunk_id": "efeea424-1e55-481f-80ba-d8dce83b511b"
+            }
+        ],
+        "global_opportunities": [
+            {
+                "question": "What types of programs are covered by DAAD scholarships?",
+                "answer": "The scope of DAAD scholarships is not fully described on the main page, but the scholarship databases linked on the site should provide details on the types of programs and degrees eligible for funding.",
+                "section": "Scholarship Program Types",
+                "page": 0,
+                "document": "German Academic Exchange Service - DAAD",
+                "chunk_id": "cebc9d00-9f18-4c70-bbc4-c7f8fe18a642"
+            }
+        ],
+        "visa_requirements": [
+            {
+                "question": "Are there language requirements for applying to German universities through DAAD programs?",
+                "answer": "Language requirements are not specified on the main page, but will vary depending on the program and university.  This information will be available on the relevant program or scholarship pages.",
+                "section": "Language Requirements for DAAD Programs",
+                "page": 0,
+                "document": "German Academic Exchange Service - DAAD",
+                "chunk_id": "88f7d4e9-6fa4-4586-b0cc-29ee1b56217b"
+            }
+        ]
+    },
+    "custom_entries": {
+        "non_english_countries": [
+            {
+                "question": "What international study programs are offered in Germany?",
+                "answer": "The DAAD website lists various international programs offered in German universities.  For details, visit: https://www2.daad.de/deutschland/studienangebote/international-programmes/en/",
+                "section": "International Programs in Germany",
+                "page": 0,
+                "document": "German Academic Exchange Service - DAAD",
+                "chunk_id": "6a34d002-fa47-49ea-b127-f5b2424966c3"
+            }
+        ],
+        "custom_entries": [
+            {
+                "question": "What support does DAAD offer to its alumni after their studies?",
+                "answer": "The DAAD website has a section dedicated to alumni, but the specific support offered isn't detailed on the main page.  Further exploration of the alumni section (https://www.daad.de/en/alumni/) is recommended.",
+                "section": "DAAD Alumni Network",
+                "page": 0,
+                "document": "German Academic Exchange Service - DAAD",
+                "chunk_id": "55e57f19-15e0-47c8-9237-93ef04a96768"
+            }
+        ]
+    },
+    "application_process": {
+        "process_information": [
+            {
+                "question": "Is there a specific application process outlined on the DAAD website for scholarships?",
+                "answer": "The DAAD website links to scholarship databases, implying individual application processes for each scholarship.  Specific instructions will be found within each scholarship listing.",
+                "section": "Scholarship Application Process",
+                "page": 0,
+                "document": "German Academic Exchange Service - DAAD",
+                "chunk_id": "7568e73b-d276-4dc7-b81c-b4b87da70904"
+            }
+        ]
+    },
+    "costs_and_finances": {
+        "cost_information": [
+            {
+                "question": "Does DAAD provide information on tuition fees for studying in Germany?",
+                "answer": "While not explicitly stated on the main page, information regarding tuition fees and living costs in Germany might be found within the scholarship database or program-specific pages linked from the DAAD site.",
+                "section": "Cost of Studying in Germany",
+                "page": 0,
+                "document": "German Academic Exchange Service - DAAD",
+                "chunk_id": "d8757ba0-d186-4122-a7a5-a3c8d7ea937e"
+            }
+        ]
+    }
+}

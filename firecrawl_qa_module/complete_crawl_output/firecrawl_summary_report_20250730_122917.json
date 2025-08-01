@@ -1,0 +1,39 @@
+{
+    "timestamp": "2025-07-30T12:29:17.907803",
+    "crawl_statistics": {
+        "total_urls_processed": 10,
+        "successful_crawls": 9,
+        "failed_crawls": 1,
+        "success_rate": "90.0%"
+    },
+    "qa_generation_statistics": {
+        "total_qa_pairs": 156,
+        "average_confidence_score": 0.909,
+        "qa_pairs_by_category": {
+            "custom_entries": 68,
+            "scholarships": 12,
+            "application_process": 34,
+            "language_requirements": 10,
+            "career_prospects": 4,
+            "general_queries": 2,
+            "costs_and_finances": 5,
+            "visa_information": 19,
+            "accommodation": 2
+        },
+        "high_confidence_pairs": 142,
+        "medium_confidence_pairs": 14,
+        "low_confidence_pairs": 0
+    },
+    "sources_processed": [
+        "https://kiec.edu.np",
+        "https://edwisefoundation.com",
+        "https://experteducation.com/nepal/",
+        "https://www.aeccglobal.com.np",
+        "https://niec.edu.np",
+        "https://educationusa.state.gov",
+        "https://www.ukcisa.org.uk",
+        "https://www.daad.de/en",
+        "https://www.educanada.ca"
+    ],
+    "processing_time": "0:10:38.872445"
+}

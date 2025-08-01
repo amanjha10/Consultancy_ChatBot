@@ -54,7 +54,7 @@
             gap: 0.5rem;
         }
 
-        .logout-btn {
+        .nav-btn, .logout-btn {
             background: rgba(255, 255, 255, 0.2);
             color: white;
             border: none;
@@ -63,9 +63,10 @@
             cursor: pointer;
             text-decoration: none;
             font-size: 0.9rem;
+            transition: background 0.3s;
         }
 
-        .logout-btn:hover {
+        .nav-btn:hover, .logout-btn:hover {
             background: rgba(255, 255, 255, 0.3);
         }
 
@@ -359,6 +360,9 @@
             </h1>
         </div>
         <div class="header-actions">
+            <a href="{{ url_for('super_admin.manage_agents') }}" class="nav-btn">
+                <i class="fas fa-users-cog"></i> Manage Agents
+            </a>
             <div class="admin-info">
                 <i class="fas fa-user-shield"></i>
                 <span>{{ super_admin.name }}</span>
@@ -468,7 +472,7 @@
                         </div>
                     </div>
                     <div class="workload-bar">
-                        <div class="workload-fill" style="width: {{ agent.workload_percentage }}%"></div>
+                        <div class="workload-fill" data-width="{{ agent.workload_percentage }}"></div>
                     </div>
                     <small style="color: #666; margin-top: 0.5rem; display: block;">
                         Specialization: {{ agent.specialization }}
@@ -632,7 +636,7 @@
                                     </div>
                                 </div>
                                 <div class="workload-bar">
-                                    <div class="workload-fill" style="width: ${agent.workload_percentage}%"></div>
+                                    <div class="workload-fill" data-width="${agent.workload_percentage}"></div>
                                 </div>
                                 <small style="color: #666; margin-top: 0.5rem; display: block;">
                                     Specialization: ${agent.specialization}
@@ -640,6 +644,9 @@
                             </div>
                         `;
                     }).join('');
+                    
+                    // Set workload bar widths for dynamically added elements
+                    setWorkloadBarWidths();
                     
                     // Update agent options in assignment selects
                     refreshAgentOptions(data.agents);
@@ -733,8 +740,17 @@
             }, 5000);
         }
 
+        // Function to set workload bar widths
+        function setWorkloadBarWidths() {
+            document.querySelectorAll('.workload-fill[data-width]').forEach(function(element) {
+                const width = element.getAttribute('data-width');
+                element.style.width = width + '%';
+            });
+        }
+
         // Initial load and periodic refresh
         document.addEventListener('DOMContentLoaded', function() {
+            setWorkloadBarWidths(); // Set initial workload bar widths
             refreshPendingSessions();
             refreshAgentStatus();
             

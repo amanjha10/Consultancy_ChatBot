@@ -18,22 +18,65 @@ def agent_login():
     """Agent login page"""
     if request.method == 'POST':
         agent_id = request.form.get('agent_id')
-        password = request.form.get('password')  # In production, implement proper authentication
+        password = request.form.get('password')
+        new_password = request.form.get('new_password')
+        confirm_password = request.form.get('confirm_password')
         
-        # Simple authentication (replace with proper auth in production)
+        # Find the agent
         agent = Agent.query.filter_by(agent_id=agent_id, is_active=True).first()
-        if agent:
+        if not agent:
+            return render_template('agent/login.html', error='Invalid agent ID')
+        
+        # Check if this is first-time login
+        if agent.is_first_login():
+            # First-time login - agent must set password
+            if not new_password or not confirm_password:
+                return render_template('agent/login.html', 
+                                     error='Please set your password for first-time login',
+                                     first_time=True,
+                                     agent_id=agent_id)
+            
+            if new_password != confirm_password:
+                return render_template('agent/login.html', 
+                                     error='Passwords do not match',
+                                     first_time=True,
+                                     agent_id=agent_id)
+            
+            if len(new_password) < 6:
+                return render_template('agent/login.html', 
+                                     error='Password must be at least 6 characters long',
+                                     first_time=True,
+                                     agent_id=agent_id)
+            
+            # Set the new password
+            agent.set_password(new_password)
+            db.session.commit()
+            
+            # Log in the agent
             session['agent_id'] = agent_id
             session['agent_name'] = agent.name
-
-            # Update agent status to available
+            
+            # Update agent status
             agent.status = 'available'
             agent.last_active = datetime.utcnow()
             db.session.commit()
-
+            
             return redirect(url_for('agent.dashboard'))
+        
         else:
-            return render_template('agent/login.html', error='Invalid agent ID')
+            # Regular login - check existing password
+            if agent.check_password(password):
+                session['agent_id'] = agent_id
+                session['agent_name'] = agent.name
+
+                # Update agent status to available
+                agent.status = 'available'
+                agent.last_active = datetime.utcnow()
+                db.session.commit()
+
+                return redirect(url_for('agent.dashboard'))
+            else:
+                return render_template('agent/login.html', error='Invalid password')
     
     return render_template('agent/login.html')
 

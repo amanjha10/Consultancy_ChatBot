@@ -267,6 +267,50 @@ def api_agent_details(agent_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@super_admin_bp.route('/api/reset-agent-password', methods=['POST'])
+@super_admin_required
+def api_reset_agent_password():
+    """API endpoint to reset agent password"""
+    try:
+        data = request.get_json()
+        agent_id = data.get('agent_id')
+        
+        if not agent_id:
+            return jsonify({'error': 'Agent ID is required'}), 400
+        
+        # Get the agent
+        agent = Agent.query.filter_by(agent_id=agent_id).first()
+        if not agent:
+            return jsonify({'error': 'Agent not found'}), 404
+        
+        # Reset the password
+        agent.reset_password()
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Password reset successful for {agent.name}. Agent must set new password on next login.',
+            'agent_name': agent.name,
+            'agent_id': agent.agent_id
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@super_admin_bp.route('/manage-agents')
+@super_admin_required
+def manage_agents():
+    """Super admin agent management page"""
+    super_admin = SuperAdmin.query.get(session['super_admin_id'])
+    
+    # Get all agents
+    agents = Agent.query.filter_by(is_active=True).all()
+    
+    return render_template('super_admin/manage_agents.html',
+                         super_admin=super_admin,
+                         agents=agents)
+
 def calculate_session_priority(session):
     """Calculate session priority (1-5, 5 being highest)"""
     priority = 1

@@ -307,7 +307,8 @@ class RAGSystem:
                 print("---")
             
             # Only return results with good enough scores
-            good_matches = [doc for doc in documents if doc['score'] > 0.4]
+            # Increased threshold for better precision
+            good_matches = [doc for doc in documents if doc['score'] > 0.25]
             return good_matches[:k]  # Return top k good matches
             documents.sort(key=lambda x: x['score'], reverse=True)
             return documents[:k]

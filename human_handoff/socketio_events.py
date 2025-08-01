@@ -16,7 +16,14 @@ socketio = None
 def init_socketio(app):
     """Initialize SocketIO with Flask app"""
     global socketio
-    socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
+    socketio = SocketIO(
+        app, 
+        cors_allowed_origins="*", 
+        async_mode='threading',
+        logger=True,
+        engineio_logger=True,
+        transports=['websocket', 'polling']
+    )
 
     # Register event handlers
     register_events()

@@ -29,23 +29,33 @@ class SessionManager:
         return session['chat_session_id']
     
     def get_user_id(self):
-        """Get user ID (can be enhanced with actual user authentication)"""
-        # For now, use IP address + user agent as a simple identifier
+        """Get user ID from authenticated student or fallback"""
+        # Try to get authenticated student ID first
+        from flask_login import current_user
+        if current_user.is_authenticated:
+            return str(current_user.id)
+        
+        # Fallback for non-authenticated sessions (backward compatibility)
         user_agent = request.headers.get('User-Agent', '')
         remote_addr = request.remote_addr or 'unknown'
-        return f"{remote_addr}_{hash(user_agent) % 10000}"
+        return f"guest_{remote_addr}_{hash(user_agent) % 10000}"
     
     def start_session(self):
         """Start a new chat session"""
         session_id = self.get_session_id()
         user_id = self.get_user_id()
         
+        # Get student_id if user is authenticated
+        from flask_login import current_user
+        student_id = current_user.id if current_user.is_authenticated else None
+        
         # Get or create session in database
-        chat_session = get_or_create_session(session_id, user_id)
+        chat_session = get_or_create_session(session_id, user_id, student_id)
         
         return {
             'session_id': session_id,
             'user_id': user_id,
+            'student_id': student_id,
             'chat_session': chat_session
         }
     

@@ -1,4 +1,6 @@
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session
+from flask_cors import CORS
+from flask_login import LoginManager, login_required, current_user
 import os
 import json
 import re
@@ -13,6 +15,7 @@ from human_handoff import init_database, db, init_db_manager
 from human_handoff.session_manager import session_manager
 from human_handoff.agent_routes import agent_bp
 from human_handoff.super_admin_routes import super_admin_bp
+from human_handoff.auth_routes import auth_bp
 from human_handoff.socketio_events import init_socketio
 from human_handoff.activity_tracker import init_activity_tracker
 
@@ -22,6 +25,9 @@ load_dotenv()
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', 'your-secret-key-change-this-in-production')
 
+# Enable CORS for all domains on all routes
+CORS(app)
+
 # Configure SQLAlchemy for human handoff system
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///human_handoff.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -30,9 +36,23 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 init_database(app)
 init_db_manager(app)
 
+# Initialize Flask-Login
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'welcome'
+login_manager.login_message = 'Please log in to access the chatbot.'
+login_manager.login_message_category = 'info'
+
+@login_manager.user_loader
+def load_user(user_id):
+    """Load user for Flask-Login"""
+    from human_handoff.models import Student
+    return Student.query.get(int(user_id))
+
 # Register blueprints
 app.register_blueprint(agent_bp)
 app.register_blueprint(super_admin_bp)
+app.register_blueprint(auth_bp)
 
 # Initialize SocketIO for real-time communication
 socketio = init_socketio(app)
@@ -81,6 +101,42 @@ RAG = None
 rag_initialized = initialize_rag()
 if not rag_initialized:
     print("Warning: RAG system failed to initialize. Some features may be limited.")
+
+def fix_escalation_issues():
+    """Fix escalation database issues on startup"""
+    try:
+        print("🔧 Checking and fixing escalation database issues...")
+        
+        # Import models after database initialization
+        from human_handoff.models import ChatSession
+        
+        with app.app_context():
+            # Reset all escalated sessions that shouldn't be escalated
+            escalated_sessions = ChatSession.query.filter_by(requires_human=True).all()
+            
+            if escalated_sessions:
+                print(f"  Found {len(escalated_sessions)} escalated sessions to reset")
+                
+                reset_count = 0
+                for session in escalated_sessions:
+                    # Reset the session to normal state
+                    session.requires_human = False
+                    session.status = 'active'
+                    session.assigned_agent_id = None
+                    session.escalation_reason = None
+                    session.escalated_at = None
+                    reset_count += 1
+                
+                db.session.commit()
+                print(f"  ✅ Reset {reset_count} escalated sessions")
+            else:
+                print("  ✅ No escalated sessions found")
+                
+    except Exception as e:
+        print(f"  ⚠️ Error fixing escalation database: {e}")
+
+# Fix escalation issues on startup
+fix_escalation_issues()
 
 # Mock database - In production, use a real database
 COUNTRIES = [
@@ -233,9 +289,15 @@ CUSTOMER_ADVISORS = [
     {'name': 'Amit Singh', 'specialization': 'General Counseling', 'phone': '+91-9876543213'}
 ]
 
+# Add a route to redirect unauthenticated users to signup/login
+@app.route('/welcome')
+def welcome():
+    """Welcome page for unauthenticated users"""
+    return render_template('singup_login/singup.html')
+
 # Add a set of greeting/conversational queries
 GREETING_KEYWORDS = [
-    'hello', 'hi', 'hey', 'how are you', 'good morning', 'good afternoon', 
+    'hello', 'hi', 'hy', 'hey', 'how are you', 'good morning', 'good afternoon', 
     'good evening', 'greetings', "what's up", "how's it going", 'namaste'
 ]
 
@@ -377,11 +439,13 @@ def search_courses(query, country=None):
     return results[:5]  # Return top 5 matches
 
 @app.route('/')
+@login_required
 def index():
     """Render the main chatbot page"""
     return render_template('index.html')
 
 @app.route('/chat', methods=['POST'])
+@login_required
 def chat():
     """Handle chat messages"""
     if not request.json or 'message' not in request.json:
@@ -411,51 +475,11 @@ def chat():
 
 
     try:
-        # Try RAG system first (if initialized)
-        if RAG and RAG.is_initialized:
-            print(f"\nProcessing message with RAG: '{user_message}'")
-            try:
-                # Get RAG results
-                rag_results = RAG.search(user_message, k=3)
-                if rag_results and len(rag_results) > 0:
-                    # Debug output
-                    print("\nRAG Results:")
-                    for idx, res in enumerate(rag_results):
-                        print(f"Match {idx + 1}:")
-                        print(f"  Question: {res['question']}")
-                        print(f"  Score: {res['score']}")
-                        print(f"  Category: {res.get('category', 'N/A')}")
-                    
-                    # Use top result if we got any matches
-                    # (scoring threshold is already applied in RAG.search())
-                    if rag_results:
-                        top_result = rag_results[0]
-                        print(f"Using RAG response with score: {top_result['score']}")
-                        
-                        # Prepare suggestions based on category
-                        suggestions = get_suggestions_for_category(top_result.get('category', 'general'))
-
-                        # Log successful bot response
-                        session_manager.log_bot_message(
-                            top_result['answer'],
-                            metadata={
-                                'source': 'RAG',
-                                'score': top_result['score'],
-                                'category': top_result.get('category', 'general')
-                            }
-                        )
-
-                        return jsonify({
-                            'response': top_result['answer'],
-                            'suggestions': suggestions,
-                            'type': 'faq_response'
-                        })
-            except Exception as e:
-                print(f"Error getting RAG response: {e}")
-
-        # Check for greetings if no good RAG match was found
+        # ============= CORE FUNCTIONALITY 1: LEVEL-WISE BUTTON NAVIGATION =============
+        # Handle button clicks and suggested navigation first (highest priority)
+        
+        # Check for greetings first (immediate response)
         if is_greeting_query(user_message):
-            # Get appropriate time-based greeting
             current_time = datetime.now().hour
             if current_time < 12:
                 greeting = "Good morning!"
@@ -464,29 +488,26 @@ def chat():
             else:
                 greeting = "Good evening!"
             response = f"{greeting} I'm EduConsult, your study abroad assistant. How can I help you today?"
-
-            # Log greeting response
             session_manager.log_bot_message(response, metadata={'source': 'greeting'})
-
             return jsonify({
                 'response': response,
                 'suggestions': ['Choose country', 'Popular courses', 'Talk to advisor'],
                 'type': 'initial_options'
             })
 
-        # Handle special actions first
+        # Handle special actions and button navigation
         if user_message.lower() == 'start over':
             return jsonify({
                 'response': "Let's start fresh! How can I help you with your study abroad plans?",
                 'suggestions': [
                     '🌍 Choose Country',
-                    '🎓 Browse Programs',
+                    '🎓 Browse Programs', 
                     '📚 Requirements',
                     '💰 Scholarships',
                     '🗣️ Talk to Advisor'
                 ],
                 'type': 'main_menu',
-                'clear_chat': True  # Frontend will clear chat history
+                'clear_chat': True
             })
         
         if user_message.lower() == 'no, continue with bot':
@@ -495,14 +516,14 @@ def chat():
                 'suggestions': [
                     '🌍 Choose Country',
                     '🎓 Browse Programs',
-                    '📚 Requirements',
+                    '📚 Requirements', 
                     '💰 Scholarships',
                     '🗣️ Talk to Advisor'
                 ],
                 'type': 'main_menu'
             })
 
-        # Handle navigation buttons
+        # Navigation button handlers
         if user_message.lower() in ['explore countries', 'browse countries', 'choose country', '🌍 choose country']:
             return jsonify({
                 'response': "Here are the top study destinations. Which country interests you?",
@@ -522,7 +543,7 @@ def chat():
                 'response': "Here are more study destinations to explore:",
                 'suggestions': [
                     '🇫🇷 France',
-                    '🇳🇱 Netherlands',
+                    '🇳🇱 Netherlands', 
                     '🇳🇿 New Zealand',
                     '🇸🇬 Singapore',
                     '🇮🇪 Ireland',
@@ -557,18 +578,14 @@ def chat():
                 'type': 'main_menu'
             })
         
-        # Handle standard button responses and other cases
-        # Check for button selections
-        # Clean country name from emoji if present
+        # Country, course, and field selections
         clean_message = re.sub(r'[^\w\s]', '', user_message).strip()
 
         if clean_message in COUNTRIES:
-            # Country selected
             country = clean_message
             country_courses = COURSES_DATABASE.get(country, [])
             course_names = [course['name'] for course in country_courses]
             
-            # Get country emoji
             country_emojis = {
                 'United States': '🇺🇸',
                 'Canada': '🇨🇦',
@@ -592,7 +609,7 @@ def chat():
                 'data': {'selected_country': user_message}
             })
         elif user_message in [course['name'] for courses in COURSES_DATABASE.values() for course in courses]:
-            # Course selected - find the course details
+            # Course details
             for country, courses in COURSES_DATABASE.items():
                 for course in courses:
                     if course['name'] == user_message:
@@ -635,10 +652,8 @@ def chat():
                 'type': 'field_selection'
             })
         elif user_message in FIELDS_OF_STUDY or any(field.lower() in user_message.lower() for field in FIELDS_OF_STUDY):
-            # Clean field name from emoji
             field = next((f for f in FIELDS_OF_STUDY if f.lower() in user_message.lower()), user_message)
             
-            # Find courses in this field
             matching_courses = []
             for country, courses in COURSES_DATABASE.items():
                 for course in courses:
@@ -660,7 +675,7 @@ def chat():
                     'type': 'country_selection'
                 })
         elif user_message.lower() in ['talk to advisor', 'human agent', 'speak to counselor']:
-            advisor = CUSTOMER_ADVISORS[0]  # Default advisor
+            advisor = CUSTOMER_ADVISORS[0]
             response = f"""
             I'll connect you with our expert counselor!
             <br><br>
@@ -677,10 +692,48 @@ def chat():
                 'type': 'human_handoff',
                 'advisor': advisor
             })
-        # 2. Use semantic understanding for free text (Gemini)
+
+        # ============= CORE FUNCTIONALITY 2: RAG-BASED SYSTEM =============
+        # Try RAG system for typed queries (second priority)
+        if RAG and RAG.is_initialized:
+            print(f"\nProcessing message with RAG: '{user_message}'")
+            try:
+                rag_results = RAG.search(user_message, k=3)
+                if rag_results and len(rag_results) > 0:
+                    print("\nRAG Results:")
+                    for idx, res in enumerate(rag_results):
+                        print(f"Match {idx + 1}:")
+                        print(f"  Question: {res['question']}")
+                        print(f"  Score: {res['score']}")
+                        print(f"  Category: {res.get('category', 'N/A')}")
+                    
+                    # Use top result if score is good enough
+                    top_result = rag_results[0]
+                    if top_result['score'] > 0.65:  # Balanced threshold for good precision/recall
+                        print(f"Using RAG response with score: {top_result['score']}")
+                        
+                        suggestions = get_suggestions_for_category(top_result.get('category', 'general'))
+                        session_manager.log_bot_message(
+                            top_result['answer'],
+                            metadata={
+                                'source': 'RAG',
+                                'score': top_result['score'],
+                                'category': top_result.get('category', 'general')
+                            }
+                        )
+
+                        return jsonify({
+                            'response': top_result['answer'],
+                            'suggestions': suggestions,
+                            'type': 'faq_response'
+                        })
+            except Exception as e:
+                print(f"Error getting RAG response: {e}")
+
+        # ============= CORE FUNCTIONALITY 3: SEMANTIC UNDERSTANDING =============
+        # Use Gemini AI for semantic understanding (third priority)
         semantic_result = get_semantic_response(user_message, context)
-        if semantic_result['confidence'] == 'high' or semantic_result['intent'] in ['greeting', 'general_info']:
-            # Log semantic response
+        if semantic_result['confidence'] in ['high', 'medium'] or semantic_result['intent'] in ['greeting', 'general_info']:
             session_manager.log_bot_message(
                 semantic_result['suggested_reply'],
                 metadata={
@@ -695,10 +748,11 @@ def chat():
                 'suggestions': ['Choose country'] + COUNTRIES[:5] + ['Explore by field'],
                 'type': 'general'
             })
-        # 3. Escalate to human agent if neither RAG nor LLM is confident
+
+        # ============= CORE FUNCTIONALITY 4: HUMAN HANDOFF ESCALATION =============
+        # Only escalate if bot is not confident (last resort)
         fallback_response = "I apologize, but I'm not sure about that specific query. Let me connect you with one of our human experts who can provide you with personalized assistance."
 
-        # Log the fallback response and trigger human handoff
         session_manager.log_bot_message(fallback_response, is_fallback=True)
         escalation_success = session_manager.handle_fallback(
             fallback_response,
@@ -725,7 +779,7 @@ In the meantime, you can:
             })
         else:
             # Fallback to traditional advisor contact if escalation fails
-            advisor = CUSTOMER_ADVISORS[3]  # General counselor
+            advisor = CUSTOMER_ADVISORS[3]
             response = f"""I apologize, but I'm not sure about that specific query. Would you like to speak with {advisor['name']}, our {advisor['specialization']} expert?
 
 Contact details:
@@ -817,4 +871,4 @@ if __name__ == '__main__':
     init_activity_tracker(app)
 
     # Use SocketIO run instead of app.run for real-time features
-    socketio.run(app, debug=True, host='0.0.0.0', port=5000)
+    socketio.run(app, debug=True, host='0.0.0.0', port=5001)
