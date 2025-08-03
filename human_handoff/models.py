@@ -65,6 +65,34 @@ class Student(UserMixin, db.Model):
             'last_login': self.last_login.isoformat() if self.last_login else None
         }
 
+class UserProfile(db.Model):
+    """Model for user profile information collected during chat"""
+    __tablename__ = 'user_profiles'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=False)
+    session_id = db.Column(db.String(100), nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    phone = db.Column(db.String(20), nullable=False)
+    is_favorite = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationship
+    student = db.relationship('Student', backref='profile_info', lazy=True)
+    
+    def to_dict(self):
+        """Convert to dictionary for JSON responses"""
+        return {
+            'id': self.id,
+            'student_id': self.student_id,
+            'session_id': self.session_id,
+            'name': self.name,
+            'phone': self.phone,
+            'is_favorite': self.is_favorite,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'student_email': self.student.email if self.student else None
+        }
+
 class ChatSession(db.Model):
     """Model for chat sessions"""
     __tablename__ = 'chat_sessions'

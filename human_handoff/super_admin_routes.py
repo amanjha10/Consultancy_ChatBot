@@ -311,6 +311,72 @@ def manage_agents():
                          super_admin=super_admin,
                          agents=agents)
 
+# Add user management routes
+@super_admin_bp.route('/users')
+@super_admin_required
+def user_management():
+    """User management page"""
+    from .models import UserProfile, Student
+    
+    # Get all user profiles with student information
+    profiles = db.session.query(UserProfile, Student).join(
+        Student, UserProfile.student_id == Student.id
+    ).order_by(UserProfile.created_at.desc()).all()
+    
+    return render_template('super_admin/user_management.html', profiles=profiles)
+
+@super_admin_bp.route('/api/users')
+@super_admin_required
+def api_get_users():
+    """API endpoint to get user profiles"""
+    try:
+        from .models import UserProfile, Student
+        
+        # Get all user profiles with student information
+        profiles = db.session.query(UserProfile, Student).join(
+            Student, UserProfile.student_id == Student.id
+        ).order_by(UserProfile.created_at.desc()).all()
+        
+        users_data = []
+        for profile, student in profiles:
+            users_data.append({
+                'id': profile.id,
+                'name': profile.name,
+                'phone': profile.phone,
+                'email': student.email,
+                'is_favorite': profile.is_favorite,
+                'created_at': profile.created_at.isoformat(),
+                'student_id': student.id,
+                'last_login': student.last_login.isoformat() if student.last_login else None
+            })
+        
+        return jsonify({'users': users_data})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@super_admin_bp.route('/api/users/<int:profile_id>/toggle-favorite', methods=['POST'])
+@super_admin_required
+def api_toggle_user_favorite(profile_id):
+    """API endpoint to toggle user favorite status"""
+    try:
+        from .models import UserProfile
+        
+        profile = UserProfile.query.get(profile_id)
+        if not profile:
+            return jsonify({'error': 'User profile not found'}), 404
+        
+        profile.is_favorite = not profile.is_favorite
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'is_favorite': profile.is_favorite,
+            'message': f'User {"added to" if profile.is_favorite else "removed from"} favorites'
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
 def calculate_session_priority(session):
     """Calculate session priority (1-5, 5 being highest)"""
     priority = 1

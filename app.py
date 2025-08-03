@@ -19,6 +19,9 @@ from human_handoff.auth_routes import auth_bp
 from human_handoff.socketio_events import init_socketio
 from human_handoff.activity_tracker import init_activity_tracker
 
+# Import phone validator
+from nepali_phone_validator import validate_nepali_phone, format_nepali_phone
+
 # Load environment variables
 load_dotenv()
 
@@ -460,6 +463,12 @@ def chat():
     # Initialize session and log user message
     session_info = session_manager.start_session()
     session_manager.log_user_message(user_message, metadata={'context': context})
+    
+    # ============= USER PROFILE COLLECTION =============
+    # Check if we need to collect user profile information
+    profile_collection_result = handle_user_profile_collection(user_message, session_info)
+    if profile_collection_result:
+        return profile_collection_result
 
     # Check if session is being handled by a human agent
     if session_manager.is_human_handling_session():
@@ -865,6 +874,133 @@ CATEGORY_SUGGESTIONS = {
 def get_suggestions_for_category(category):
     """Get relevant suggestion buttons based on response category"""
     return CATEGORY_SUGGESTIONS.get(category.lower(), CATEGORY_SUGGESTIONS['general'])
+
+# Helper functions for user profile collection
+def handle_user_profile_collection(user_message, session_info):
+    """
+    Handle collection of user name and phone number at the start of chat session
+    Returns a JSON response if collection is in progress, None if complete
+    """
+    from human_handoff.models import UserProfile
+    
+    session_id = session_info['session_id']
+    student_id = session_info['student_id']
+    
+    # Check if student already has any profile (they shouldn't be asked again)
+    existing_profile = UserProfile.query.filter_by(
+        student_id=student_id
+    ).first()
+    
+    if existing_profile:
+        return None  # Profile already collected for this student, continue with normal chat
+    
+    # Get session state for profile collection
+    profile_state = session.get('profile_collection_state', 'need_name')
+    
+    if profile_state == 'need_name':
+        # Ask for name
+        if user_message.lower() in ['hi', 'hello', 'hey', 'start']:
+            response = "Hello! Welcome to EduConsult. Before we begin, may I have your full name please?"
+            session['profile_collection_state'] = 'waiting_for_name'
+            session_manager.log_bot_message(response, metadata={'type': 'profile_collection'})
+            return jsonify({
+                'response': response,
+                'suggestions': [],
+                'type': 'profile_collection',
+                'step': 'name'
+            })
+        else:
+            # User didn't start with greeting, still ask for name
+            response = "Hello! Welcome to EduConsult. Before we begin, may I have your full name please?"
+            session['profile_collection_state'] = 'waiting_for_name'
+            session_manager.log_bot_message(response, metadata={'type': 'profile_collection'})
+            return jsonify({
+                'response': response,
+                'suggestions': [],
+                'type': 'profile_collection',
+                'step': 'name'
+            })
+    
+    elif profile_state == 'waiting_for_name':
+        # Validate and store name
+        name = user_message.strip()
+        if len(name) < 2 or len(name) > 100:
+            response = "Please provide a valid full name (2-100 characters)."
+            session_manager.log_bot_message(response, metadata={'type': 'profile_collection'})
+            return jsonify({
+                'response': response,
+                'suggestions': [],
+                'type': 'profile_collection',
+                'step': 'name'
+            })
+        
+        # Store name temporarily
+        session['temp_profile_name'] = name
+        session['profile_collection_state'] = 'waiting_for_phone'
+        
+        response = f"Nice to meet you, {name}! Now, could you please provide your phone number for verification?"
+        session_manager.log_bot_message(response, metadata={'type': 'profile_collection'})
+        return jsonify({
+            'response': response,
+            'suggestions': [],
+            'type': 'profile_collection',
+            'step': 'phone'
+        })
+    
+    elif profile_state == 'waiting_for_phone':
+        # Validate phone number
+        phone_validation = validate_nepali_phone(user_message)
+        
+        if not phone_validation['valid']:
+            response = f"❌ {phone_validation['message']}\n\nPlease provide a valid Nepali mobile number (10 digits starting with 980, 981, 982, 984, 985, 986, 961, or 962)."
+            session_manager.log_bot_message(response, metadata={'type': 'profile_collection'})
+            return jsonify({
+                'response': response,
+                'suggestions': [],
+                'type': 'profile_collection',
+                'step': 'phone'
+            })
+        
+        # Valid phone number - create profile
+        try:
+            name = session.get('temp_profile_name')
+            formatted_phone = phone_validation['formatted_number']
+            
+            profile = UserProfile(
+                student_id=student_id,
+                session_id=session_id,
+                name=name,
+                phone=formatted_phone
+            )
+            
+            db.session.add(profile)
+            db.session.commit()
+            
+            # Clean up session
+            session.pop('temp_profile_name', None)
+            session.pop('profile_collection_state', None)
+            
+            response = f"✅ Thank you, {name}! Your {phone_validation['provider']} number has been verified.\n\nNow, how can I help you with your study abroad plans?"
+            session_manager.log_bot_message(response, metadata={'type': 'profile_collection'})
+            
+            return jsonify({
+                'response': response,
+                'suggestions': ['Choose country', 'Popular courses', 'Scholarship info', 'Talk to advisor'],
+                'type': 'profile_complete'
+            })
+            
+        except Exception as e:
+            print(f"Error creating user profile: {e}")
+            response = "There was an error saving your information. Please try again."
+            session_manager.log_bot_message(response, metadata={'type': 'profile_collection'})
+            return jsonify({
+                'response': response,
+                'suggestions': [],
+                'type': 'profile_collection',
+                'step': 'phone'
+            })
+    
+    return None  # Continue with normal chat flow
 
 if __name__ == '__main__':
     # Initialize activity tracker

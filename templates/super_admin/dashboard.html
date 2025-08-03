@@ -48,6 +48,12 @@
             gap: 1rem;
         }
 
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
         .admin-info {
             display: flex;
             align-items: center;
@@ -64,10 +70,18 @@
             text-decoration: none;
             font-size: 0.9rem;
             transition: background 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
         }
 
         .nav-btn:hover, .logout-btn:hover {
             background: rgba(255, 255, 255, 0.3);
+        }
+
+        .nav-btn.active {
+            background: rgba(255, 255, 255, 0.4);
+            font-weight: 600;
         }
 
         .dashboard {
@@ -360,9 +374,17 @@
             </h1>
         </div>
         <div class="header-actions">
-            <a href="{{ url_for('super_admin.manage_agents') }}" class="nav-btn">
-                <i class="fas fa-users-cog"></i> Manage Agents
-            </a>
+            <div class="nav-links">
+                <a href="{{ url_for('super_admin.dashboard') }}" class="nav-btn active">
+                    <i class="fas fa-tachometer-alt"></i> Dashboard
+                </a>
+                <a href="{{ url_for('super_admin.user_management') }}" class="nav-btn">
+                    <i class="fas fa-users"></i> User Management
+                </a>
+                <a href="{{ url_for('super_admin.manage_agents') }}" class="nav-btn">
+                    <i class="fas fa-users-cog"></i> Manage Agents
+                </a>
+            </div>
             <div class="admin-info">
                 <i class="fas fa-user-shield"></i>
                 <span>{{ super_admin.name }}</span>
