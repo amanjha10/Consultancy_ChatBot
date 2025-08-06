@@ -328,17 +328,50 @@ def user_management():
 @super_admin_bp.route('/api/users')
 @super_admin_required
 def api_get_users():
-    """API endpoint to get user profiles"""
+    """API endpoint to get user profiles with pagination"""
     try:
         from .models import UserProfile, Student
         
-        # Get all user profiles with student information
-        profiles = db.session.query(UserProfile, Student).join(
+        # Get pagination parameters
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 10, type=int)  # 10 users per page as requested
+        search = request.args.get('search', '', type=str)
+        favorite_filter = request.args.get('favorite', '', type=str)
+        
+        # Build base query
+        query = db.session.query(UserProfile, Student).join(
             Student, UserProfile.student_id == Student.id
-        ).order_by(UserProfile.created_at.desc()).all()
+        )
+        
+        # Apply search filter
+        if search:
+            search_term = f"%{search}%"
+            query = query.filter(
+                db.or_(
+                    UserProfile.name.ilike(search_term),
+                    UserProfile.phone.ilike(search_term),
+                    Student.email.ilike(search_term)
+                )
+            )
+        
+        # Apply favorite filter
+        if favorite_filter == 'favorites':
+            query = query.filter(UserProfile.is_favorite == True)
+        elif favorite_filter == 'non-favorites':
+            query = query.filter(UserProfile.is_favorite == False)
+        
+        # Order by creation date (newest first)
+        query = query.order_by(UserProfile.created_at.desc())
+        
+        # Apply pagination
+        paginated = query.paginate(
+            page=page, 
+            per_page=per_page, 
+            error_out=False
+        )
         
         users_data = []
-        for profile, student in profiles:
+        for profile, student in paginated.items:
             users_data.append({
                 'id': profile.id,
                 'name': profile.name,
@@ -350,7 +383,19 @@ def api_get_users():
                 'last_login': student.last_login.isoformat() if student.last_login else None
             })
         
-        return jsonify({'users': users_data})
+        return jsonify({
+            'users': users_data,
+            'pagination': {
+                'page': paginated.page,
+                'pages': paginated.pages,
+                'per_page': paginated.per_page,
+                'total': paginated.total,
+                'has_next': paginated.has_next,
+                'has_prev': paginated.has_prev,
+                'next_num': paginated.next_num,
+                'prev_num': paginated.prev_num
+            }
+        })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 

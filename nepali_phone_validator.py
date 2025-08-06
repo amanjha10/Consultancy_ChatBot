@@ -12,9 +12,8 @@ def validate_nepali_phone(phone):
     Rules:
     - Must be exactly 10 digits long
     - Must start with valid prefixes:
-      * 980, 981, 982 → Ncell
-      * 984, 985, 986, 961 → NTC
-      * 962 → Smart Cell
+      * NTC: 984, 985, 986, 974, 975, 976
+      * Ncell: 980, 981, 982, 970, 971, 972
     - Must only contain digits
     
     Returns:
@@ -44,14 +43,18 @@ def validate_nepali_phone(phone):
     
     # Check valid prefixes
     valid_prefixes = {
-        '980': 'Ncell',
-        '981': 'Ncell', 
-        '982': 'Ncell',
         '984': 'NTC',
         '985': 'NTC',
         '986': 'NTC',
-        '961': 'NTC',
-        '962': 'Smart Cell'
+        '974': 'NTC',
+        '975': 'NTC',
+        '976': 'NTC',
+        '980': 'Ncell',
+        '981': 'Ncell',
+        '982': 'Ncell',
+        '970': 'Ncell',
+        '971': 'Ncell',
+        '972': 'Ncell'
     }
     
     prefix = clean_phone[:3]

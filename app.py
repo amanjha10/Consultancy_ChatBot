@@ -899,27 +899,15 @@ def handle_user_profile_collection(user_message, session_info):
     
     if profile_state == 'need_name':
         # Ask for name
-        if user_message.lower() in ['hi', 'hello', 'hey', 'start']:
-            response = "Hello! Welcome to EduConsult. Before we begin, may I have your full name please?"
-            session['profile_collection_state'] = 'waiting_for_name'
-            session_manager.log_bot_message(response, metadata={'type': 'profile_collection'})
-            return jsonify({
-                'response': response,
-                'suggestions': [],
-                'type': 'profile_collection',
-                'step': 'name'
-            })
-        else:
-            # User didn't start with greeting, still ask for name
-            response = "Hello! Welcome to EduConsult. Before we begin, may I have your full name please?"
-            session['profile_collection_state'] = 'waiting_for_name'
-            session_manager.log_bot_message(response, metadata={'type': 'profile_collection'})
-            return jsonify({
-                'response': response,
-                'suggestions': [],
-                'type': 'profile_collection',
-                'step': 'name'
-            })
+        response = "Hello! Welcome to EduConsult. Before we begin, may I have your full name please?"
+        session['profile_collection_state'] = 'waiting_for_name'
+        session_manager.log_bot_message(response, metadata={'type': 'profile_collection'})
+        return jsonify({
+            'response': response,
+            'suggestions': [],
+            'type': 'profile_collection',
+            'step': 'name'
+        })
     
     elif profile_state == 'waiting_for_name':
         # Validate and store name

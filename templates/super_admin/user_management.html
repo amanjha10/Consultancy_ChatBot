@@ -211,6 +211,70 @@
             margin-bottom: 1rem;
         }
 
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 2rem 0;
+            gap: 0.5rem;
+        }
+
+        .pagination-container {
+            margin: 2rem 0;
+            padding: 1rem;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        .pagination-controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .pagination-ellipsis {
+            padding: 0.5rem;
+            color: #666;
+            font-weight: bold;
+        }
+
+        .pagination-btn {
+            padding: 0.5rem 1rem;
+            border: 1px solid #ddd;
+            background: white;
+            color: #333;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+        }
+
+        .pagination-btn:hover:not(.disabled) {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .pagination-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .pagination-btn.disabled {
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+
+        .pagination-info {
+            color: #666;
+            font-size: 0.9rem;
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+
         .loading {
             text-align: center;
             padding: 2rem;
@@ -326,15 +390,26 @@
     <script>
         let allUsers = [];
         let filteredUsers = [];
+        let currentPage = 1;
+        let totalPages = 1;
+        let totalUsers = 0;
+        const usersPerPage = 10;
 
         // Load users on page load
         document.addEventListener('DOMContentLoaded', function() {
             loadUsers();
         });
 
-        async function loadUsers() {
+        async function loadUsers(page = 1, search = '', favoriteFilter = 'all') {
             try {
-                const response = await fetch('/super-admin/api/users');
+                const params = new URLSearchParams({
+                    page: page,
+                    per_page: usersPerPage,
+                    search: search,
+                    favorite_filter: favoriteFilter
+                });
+
+                const response = await fetch(`/super-admin/api/users?${params}`);
                 const data = await response.json();
 
                 if (data.error) {
@@ -343,8 +418,13 @@
 
                 allUsers = data.users;
                 filteredUsers = [...allUsers];
-                updateStats();
+                currentPage = data.current_page;
+                totalPages = data.total_pages;
+                totalUsers = data.total;
+
+                updateStats(data);
                 renderUsers();
+                renderPagination();
                 setupFilters();
             } catch (error) {
                 console.error('Error loading users:', error);
@@ -357,17 +437,105 @@
             }
         }
 
-        function updateStats() {
-            const today = new Date().toDateString();
-            const newToday = allUsers.filter(user => 
-                new Date(user.created_at).toDateString() === today
-            ).length;
-            const favoriteCount = allUsers.filter(user => user.is_favorite).length;
+        function updateStats(data = null) {
+            if (data && data.stats) {
+                // Use server-provided stats for accurate totals
+                document.getElementById('total-users').textContent = data.stats.total_users;
+                document.getElementById('favorite-users').textContent = data.stats.favorite_users;
+                document.getElementById('new-today').textContent = data.stats.new_today;
+                document.getElementById('verified-phones').textContent = data.stats.verified_phones;
+            } else {
+                // Fallback to local calculation (less accurate with pagination)
+                const today = new Date().toDateString();
+                const newToday = allUsers.filter(user => 
+                    new Date(user.created_at).toDateString() === today
+                ).length;
+                const favoriteCount = allUsers.filter(user => user.is_favorite).length;
 
-            document.getElementById('total-users').textContent = allUsers.length;
-            document.getElementById('favorite-users').textContent = favoriteCount;
-            document.getElementById('new-today').textContent = newToday;
-            document.getElementById('verified-phones').textContent = allUsers.length; // All have verified phones
+                document.getElementById('total-users').textContent = totalUsers;
+                document.getElementById('favorite-users').textContent = favoriteCount;
+                document.getElementById('new-today').textContent = newToday;
+                document.getElementById('verified-phones').textContent = allUsers.length;
+            }
+        }
+
+        function renderPagination() {
+            const content = document.getElementById('users-content');
+            const existingPagination = content.querySelector('.pagination-container');
+            if (existingPagination) {
+                existingPagination.remove();
+            }
+
+            if (totalPages <= 1) return;
+
+            const paginationHtml = `
+                <div class="pagination-container">
+                    <div class="pagination-info">
+                        Showing ${((currentPage - 1) * usersPerPage) + 1} to ${Math.min(currentPage * usersPerPage, totalUsers)} of ${totalUsers} users
+                    </div>
+                    <div class="pagination-controls">
+                        <button class="pagination-btn ${currentPage <= 1 ? 'disabled' : ''}" 
+                                onclick="changePage(${currentPage - 1})" 
+                                ${currentPage <= 1 ? 'disabled' : ''}>
+                            <i class="fas fa-chevron-left"></i> Previous
+                        </button>
+                        
+                        ${generatePageButtons()}
+                        
+                        <button class="pagination-btn ${currentPage >= totalPages ? 'disabled' : ''}" 
+                                onclick="changePage(${currentPage + 1})" 
+                                ${currentPage >= totalPages ? 'disabled' : ''}>
+                            Next <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            content.insertAdjacentHTML('beforeend', paginationHtml);
+        }
+
+        function generatePageButtons() {
+            let buttons = '';
+            const maxVisiblePages = 5;
+            let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+            let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+            // Adjust start page if we're near the end
+            if (endPage - startPage < maxVisiblePages - 1) {
+                startPage = Math.max(1, endPage - maxVisiblePages + 1);
+            }
+
+            // First page button
+            if (startPage > 1) {
+                buttons += `<button class="pagination-btn" onclick="changePage(1)">1</button>`;
+                if (startPage > 2) {
+                    buttons += `<span class="pagination-ellipsis">...</span>`;
+                }
+            }
+
+            // Page number buttons
+            for (let i = startPage; i <= endPage; i++) {
+                buttons += `<button class="pagination-btn ${i === currentPage ? 'active' : ''}" 
+                                   onclick="changePage(${i})">${i}</button>`;
+            }
+
+            // Last page button
+            if (endPage < totalPages) {
+                if (endPage < totalPages - 1) {
+                    buttons += `<span class="pagination-ellipsis">...</span>`;
+                }
+                buttons += `<button class="pagination-btn" onclick="changePage(${totalPages})">${totalPages}</button>`;
+            }
+
+            return buttons;
+        }
+
+        function changePage(page) {
+            if (page < 1 || page > totalPages || page === currentPage) return;
+            
+            const searchTerm = document.getElementById('search').value;
+            const favoriteFilter = document.getElementById('filter-favorite').value;
+            loadUsers(page, searchTerm, favoriteFilter);
         }
 
         function renderUsers() {
@@ -425,33 +593,26 @@
             const searchInput = document.getElementById('search');
             const favoriteFilter = document.getElementById('filter-favorite');
 
-            searchInput.addEventListener('input', applyFilters);
-            favoriteFilter.addEventListener('change', applyFilters);
+            // Remove existing listeners to prevent duplicates
+            searchInput.removeEventListener('input', handleFilterChange);
+            favoriteFilter.removeEventListener('change', handleFilterChange);
+
+            // Add new listeners
+            searchInput.addEventListener('input', handleFilterChange);
+            favoriteFilter.addEventListener('change', handleFilterChange);
+        }
+
+        function handleFilterChange() {
+            // Reset to page 1 when filters change
+            const searchTerm = document.getElementById('search').value;
+            const favoriteFilter = document.getElementById('filter-favorite').value;
+            loadUsers(1, searchTerm, favoriteFilter);
         }
 
         function applyFilters() {
-            const searchTerm = document.getElementById('search').value.toLowerCase();
-            const favoriteFilter = document.getElementById('filter-favorite').value;
-
-            filteredUsers = allUsers.filter(user => {
-                // Search filter
-                const matchesSearch = 
-                    user.name.toLowerCase().includes(searchTerm) ||
-                    user.phone.includes(searchTerm) ||
-                    user.email.toLowerCase().includes(searchTerm);
-
-                // Favorite filter
-                let matchesFavorite = true;
-                if (favoriteFilter === 'favorites') {
-                    matchesFavorite = user.is_favorite;
-                } else if (favoriteFilter === 'non-favorites') {
-                    matchesFavorite = !user.is_favorite;
-                }
-
-                return matchesSearch && matchesFavorite;
-            });
-
-            renderUsers();
+            // This function is now handled by handleFilterChange and server-side filtering
+            // Kept for backward compatibility
+            handleFilterChange();
         }
 
         async function toggleFavorite(profileId, button) {
@@ -469,7 +630,7 @@
                     throw new Error(data.error);
                 }
 
-                // Update button state
+                // Update button state immediately for better UX
                 if (data.is_favorite) {
                     button.classList.add('active');
                 } else {
@@ -482,15 +643,17 @@
                     user.is_favorite = data.is_favorite;
                 }
 
-                // Update stats
-                updateStats();
-
                 // Show success message briefly
                 const originalTitle = button.title;
                 button.title = data.message;
                 setTimeout(() => {
                     button.title = originalTitle;
                 }, 2000);
+
+                // Refresh current page to update stats
+                const searchTerm = document.getElementById('search').value;
+                const favoriteFilter = document.getElementById('filter-favorite').value;
+                loadUsers(currentPage, searchTerm, favoriteFilter);
 
             } catch (error) {
                 console.error('Error toggling favorite:', error);
